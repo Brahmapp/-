@@ -696,6 +696,8 @@
     return JSON.parse(t);
   }
 
+  function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+
   function aiGradeOne(item, key, model) {
     return fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -707,7 +709,7 @@
       },
       body: JSON.stringify({
         model: model,
-        max_tokens: 1200,
+        max_tokens: 4000,
         system: AI_SYSTEM,
         messages: [{ role: 'user', content: buildAiPrompt(item) }]
       })
@@ -716,14 +718,28 @@
         if (!res.ok) {
           var msg = (data && data.error && data.error.message) || ('HTTP ' + res.status);
           if (res.status === 401) msg = 'APIキーが正しくないか、無効化されています。';
-          if (res.status === 429) msg = 'リクエストが多すぎます。少し待って再実行してください。';
+          if (res.status === 429) msg = 'リクエストが集中しています（レート制限）。';
           if (res.status === 400 && /credit|balance/i.test(msg)) msg = 'クレジット残高が不足しています。';
-          throw new Error(msg);
+          if (res.status >= 500) msg = 'サーバー側が一時的に混雑しています。';
+          var err = new Error(msg);
+          err.status = res.status;
+          // 429 と 5xx は時間をおけば成功しうる
+          err.retryable = (res.status === 429 || res.status === 529 || res.status >= 500);
+          throw err;
+        }
+        if (data.stop_reason === 'max_tokens') {
+          var e2 = new Error('応答が長すぎて途中で切れました。');
+          e2.retryable = false;
+          throw e2;
         }
         var text = (data.content || []).map(function (c) { return c.type === 'text' ? c.text : ''; }).join('');
         var j;
         try { j = parseAiJson(text); }
-        catch (e) { throw new Error('AIの応答を解析できませんでした。もう一度お試しください。'); }
+        catch (e) {
+          var e3 = new Error('AIの応答を解析できませんでした。');
+          e3.retryable = true;   // 一度きりの揺らぎのことが多いので再試行する
+          throw e3;
+        }
         return {
           score: Math.max(0, Math.min(100, Math.round(Number(j.score) || 0))),
           summary: String(j.summary || ''),
@@ -736,17 +752,34 @@
     });
   }
 
+  function aiGradeWithRetry(item, key, model, onProgress) {
+    return aiGradeOne(item, key, model).catch(function (err) {
+      if (!err.retryable) throw err;
+      onProgress('retry');
+      return sleep(err.status === 429 ? 4000 : 1500).then(function () {
+        return aiGradeOne(item, key, model);
+      });
+    });
+  }
+
+  // 1問ずつ独立して採点し、失敗した問題だけ簡易採点に落とす
   function aiGradeAll(items, onProgress) {
-    var key = getKey(), model = getModel(), i = 0;
+    var key = getKey(), model = getModel(), i = 0, failed = [];
     function step() {
-      if (i >= items.length) return Promise.resolve(true);
-      onProgress(i + 1, items.length);
-      return aiGradeOne(items[i], key, model).then(function (r) {
-        items[i].ai = r;
-        items[i].score = r.score;
-        items[i].detail = null;
+      if (i >= items.length) return Promise.resolve(failed);
+      var item = items[i];
+      onProgress(i + 1, items.length, '');
+      return aiGradeWithRetry(item, key, model, function (kind) {
+        if (kind === 'retry') onProgress(i + 1, items.length, '再試行中');
+      }).then(function (r) {
+        item.ai = r; item.score = r.score; item.detail = null;
+      }).catch(function (err) {
+        item.ai = null;
+        item.aiError = (err && err.message) ? err.message : String(err);
+        failed.push(item.aiError);
+      }).then(function () {
         i++;
-        return step();
+        return i < items.length ? sleep(500).then(step) : step();  // 連続呼び出しの間隔を空ける
       });
     }
     return step();
@@ -994,7 +1027,13 @@
       return out + '</div>';
     }
 
-    return '<div class="mt-4 rounded-xl border border-slate-200 p-4"><p class="text-xs font-extrabold text-slate-500 mb-2">フィードバック（簡易採点）</p>' +
+    var head = item.aiError
+      ? '<div class="mb-3 rounded-lg bg-rose-50 border border-rose-200 p-3 flex flex-wrap items-center justify-between gap-2">' +
+        '<span class="text-sm font-bold text-rose-700">この問題はAI添削に失敗しました: ' + esc(item.aiError) + '</span>' +
+        '<button type="button" data-action="regrade" data-idx="' + item.__idx + '" class="px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition">この問題だけ再採点</button></div>'
+      : '';
+
+    return head + '<div class="mt-4 rounded-xl border border-slate-200 p-4"><p class="text-xs font-extrabold text-slate-500 mb-2">フィードバック（簡易採点）</p>' +
       '<ul class="space-y-1">' + g.notes.map(function (n) { return '<li class="text-sm text-slate-700 flex gap-2"><span class="text-slate-300">–</span><span>' + esc(n) + '</span></li>'; }).join('') + '</ul>' +
       (g.misses.length ? '<p class="text-sm text-rose-700 mt-3">使えなかったキー表現: ' + g.misses.map(function (m) { return '<span class="hl-key">' + esc(m.variants[0]) + '</span>'; }).join(' ') + '</p>' : '') +
       '</div>';
@@ -1008,19 +1047,34 @@
     $('#review-title').textContent = jpDate(TODAY) + ' の結果';
     $('#today-rounds').textContent = sess.rounds;
 
-    var usedAi = sess.items.some(function (it) { return !!it.ai; });
+    var aiN = sess.items.filter(function (it) { return !!it.ai; }).length;
+    // 個別の失敗状況から毎回組み立て直す（再採点で解消した分を残さない）
+    var errs = sess.items.filter(function (it) { return !it.ai && it.aiError; })
+                         .map(function (it) { return it.aiError; });
+    if (errs.length) {
+      var u = errs.filter(function (v, i2) { return errs.indexOf(v) === i2; });
+      lastAiError = u.join(' / ') + '（' + errs.length + '問）';
+    } else if (sess.items.some(function (it) { return !!it.ai; })) {
+      lastAiError = '';
+    }
     var note = $('#review-mode-note');
     if (note) {
-      note.innerHTML = lastAiError
-        ? '<span class="text-rose-600 font-bold">AI添削に失敗したため簡易採点を使用しました: ' + esc(lastAiError) + '</span>'
-        : usedAi
-          ? 'Claude による添削結果です（モデル: ' + esc(getModel()) + '）。'
-          : '※ 簡易採点で動作中です。<button type="button" data-action="nav" data-view="settings" class="text-indigo-600 underline underline-offset-2 font-bold">設定でAPIキーを登録</button>すると本格的なAI添削になります。';
+      if (aiN && lastAiError) {
+        note.innerHTML = 'Claude による添削 ' + aiN + '問 / 簡易採点 ' + (sess.items.length - aiN) + '問。' +
+          '<span class="text-rose-600 font-bold">失敗理由: ' + esc(lastAiError) + '</span>';
+      } else if (lastAiError) {
+        note.innerHTML = '<span class="text-rose-600 font-bold">AI添削に失敗したため簡易採点を使用しました: ' + esc(lastAiError) + '</span>';
+      } else if (aiN) {
+        note.innerHTML = 'Claude による添削結果です（モデル: ' + esc(getModel()) + '）。';
+      } else {
+        note.innerHTML = '※ 簡易採点で動作中です。<button type="button" data-action="nav" data-view="settings" class="text-indigo-600 underline underline-offset-2 font-bold">設定でAPIキーを登録</button>すると本格的なAI添削になります。';
+      }
     }
 
     $('#review-list').innerHTML = sess.items.map(function (item, idx) {
       var q = questionOf(item);
       if (!q || typeof item.score !== 'number') return '';
+      item.__idx = idx;
       var g = item.detail || grade(item);
 
       var head = '<div class="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-slate-100">' +
@@ -1271,9 +1325,22 @@
     }
 
     btn.innerHTML = '<i class="ph-bold ph-spinner animate-spin" aria-hidden="true"></i> AI添削中...';
-    aiGradeAll(sess.items, function (i, n) {
-      btn.innerHTML = '<i class="ph-bold ph-spinner animate-spin" aria-hidden="true"></i> AI添削中... (' + i + '/' + n + ')';
-    }).then(function () {
+    sess.items.forEach(function (it) { it.aiError = null; });
+
+    aiGradeAll(sess.items, function (i, n, extra) {
+      btn.innerHTML = '<i class="ph-bold ph-spinner animate-spin" aria-hidden="true"></i> AI添削中... (' + i + '/' + n + ')' + (extra ? ' ' + extra : '');
+    }).then(function (failed) {
+      // AIで採点できなかった問題だけ簡易採点で埋める
+      sess.items.forEach(function (it) {
+        if (it.ai) return;
+        var g = grade(it);
+        it.score = g.score;
+        it.detail = { notes: g.notes, misses: g.misses.map(function (m) { return { variants: m.variants }; }) };
+      });
+      if (failed.length) {
+        var uniq = failed.filter(function (v, i2) { return failed.indexOf(v) === i2; });
+        lastAiError = uniq.join(' / ') + '（' + failed.length + '問）';
+      }
       finish();
     }).catch(function (err) {
       lastAiError = err && err.message ? err.message : String(err);
@@ -1344,6 +1411,20 @@
         break;
       }
       case 'test-key': testKey(); break;
+      case 'regrade': {
+        var sess2 = state.sessions[TODAY];
+        var it2 = sess2 && sess2.items[+el.getAttribute('data-idx')];
+        if (!it2 || !getKey()) break;
+        el.disabled = true; el.textContent = '再採点中...';
+        aiGradeWithRetry(it2, getKey(), getModel(), function () { }).then(function (r) {
+          it2.ai = r; it2.score = r.score; it2.detail = null; it2.aiError = null;
+          save(); renderReview();
+        }).catch(function (err) {
+          it2.aiError = (err && err.message) ? err.message : String(err);
+          save(); renderReview();
+        });
+        break;
+      }
       case 'clear-key': {
         setKeyVal('');
         renderSettings();
