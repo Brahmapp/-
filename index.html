@@ -209,6 +209,23 @@
       <div class="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-full bg-indigo-50 text-indigo-700 text-xs font-bold mb-1">添削完了・分析レポート</div>
       <h2 class="text-xl font-extrabold text-slate-900" id="review-title">本日の結果</h2>
       <p class="text-xs text-slate-500 mt-1" id="review-mode-note"></p>
+      <details class="mt-2 group">
+        <summary class="cursor-pointer text-xs font-bold text-indigo-600 hover:text-indigo-800">採点基準について</summary>
+        <div class="mt-2 rounded-xl bg-slate-50 border border-slate-200 p-4 text-xs text-slate-600 space-y-2">
+          <p>TOEFLライティングの採点基準を参考に、4観点を各0〜5のバンドで評価し、重み付けして100点に換算しています。</p>
+          <table class="w-full text-left">
+            <thead><tr class="text-slate-400"><th class="pb-1">観点</th><th class="pb-1">重み</th><th class="pb-1">見ているもの</th></tr></thead>
+            <tbody>
+              <tr><td class="pr-3 font-bold text-slate-700">課題達成</td><td class="pr-3">30%</td><td>要件をすべて満たし、具体的に書けているか</td></tr>
+              <tr><td class="pr-3 font-bold text-slate-700">文法・語法</td><td class="pr-3">30%</td><td>時制・語法・冠詞などの正確さ</td></tr>
+              <tr><td class="pr-3 font-bold text-slate-700">語彙・自然さ</td><td class="pr-3">25%</td><td>直訳を脱し、場面に合う自然な表現か</td></tr>
+              <tr><td class="pr-3 font-bold text-slate-700">構成・トーン</td><td class="pr-3">15%</td><td>流れの分かりやすさと相手に合った丁寧さ</td></tr>
+            </tbody>
+          </table>
+          <p>TOEFLと同様、解答は<strong>制限時間内の初稿</strong>として扱い、意味の伝達を妨げない軽微な誤りは大きく減点しません。一方、日本語の直訳になっている箇所は「語彙・自然さ」で厳しく見ます。</p>
+          <p class="text-slate-400">※ APIキー未登録時の簡易採点は、キー表現の一致・語数・体裁のみで算出しており、文法と自然さは判定していません。</p>
+        </div>
+      </details>
     </div>
     <div class="sm:text-right shrink-0">
       <div class="text-xs text-slate-500 font-bold">セット平均スコア</div>
@@ -633,7 +650,9 @@
     if (/[\u3040-\u30ff\u4e00-\u9faf]/.test(text)) { formScore -= 0.6; notes.push('日本語が残っています。'); }
     formScore = Math.max(0, formScore);
 
-    var score = Math.round(keyScore * 70 + lenScore * 15 + formScore * 15);
+    // AI採点（ルーブリック基準）と点数感覚を近づけるための配分。
+    // 簡易採点では文法・自然さを判定できないため、その分は減点せず中立に扱う。
+    var score = Math.round(keyScore * 55 + lenScore * 20 + formScore * 25);
     score = Math.max(0, Math.min(100, score));
 
     if (misses.length) notes.unshift('狙いのキー表現のうち ' + misses.length + ' 個が使われていません。');
@@ -651,6 +670,27 @@
     { id: 'claude-haiku-4-5-20251001',  label: 'Claude Haiku 4.5 — 低コスト・高速',  note: '$1 / $5 per Mtok' }
   ];
   var lastAiError = '';
+
+  // TOEFL 2026 ライティング（Write an Email / Academic Discussion）のルーブリックを参考にした4観点。
+  // 各観点を0〜5のバンドで評価し、重み付けして100点に換算する。
+  var RUBRIC = [
+    { key: 'task',    label: '課題達成',      weight: 30, hint: '要件をすべて満たし、具体的に書けているか' },
+    { key: 'grammar', label: '文法・語法',    weight: 30, hint: '時制・語法・冠詞などの正確さ' },
+    { key: 'lexis',   label: '語彙・自然さ',  weight: 25, hint: '直訳を脱し、場面に合う自然な表現か' },
+    { key: 'organization', label: '構成・トーン', weight: 15, hint: '流れの分かりやすさと相手に合った丁寧さ' }
+  ];
+
+  function bandsToScore(c) {
+    if (!c) return null;
+    var sum = 0, ok = true;
+    RUBRIC.forEach(function (r) {
+      var b = c[r.key] && typeof c[r.key].band !== 'undefined' ? Number(c[r.key].band) : NaN;
+      if (isNaN(b)) { ok = false; return; }
+      sum += Math.max(0, Math.min(5, b)) * r.weight;
+    });
+    return ok ? Math.round(sum / 5) : null;
+  }
+
 
   function getKey()   { try { return localStorage.getItem(KEY_STORE) || ''; } catch (e) { return ''; } }
   function setKeyVal(v) { try { if (v) localStorage.setItem(KEY_STORE, v); else localStorage.removeItem(KEY_STORE); } catch (e) { } }
@@ -677,16 +717,37 @@
       '【この問題で身につけたいキー表現】\n' + keys.join('\n') + '\n\n' +
       '【想定される長さ】' + range[0] + '〜' + range[1] + ' words\n\n' +
       '【学習者の解答】\n' + (item.answer || '（未解答）') + '\n\n' +
-      'この解答を添削し、次のJSON形式で返してください。説明文は日本語、英文は英語で書いてください。\n' +
+      '【採点方針】\n' +
+      'TOEFLライティングの採点基準に準じます。次の4観点をそれぞれ0〜5のバンドで評価してください。\n' +
+      '- task（課題達成）: 求められた要件をすべて満たし、具体的に述べられているか\n' +
+      '- grammar（文法・語法）: 時制、語法、冠詞、前置詞などの正確さ\n' +
+      '- lexis（語彙・自然さ）: 日本語からの直訳を脱し、場面にふさわしい自然な表現が使えているか\n' +
+      '- organization（構成・トーン）: 流れの分かりやすさと、相手・場面に合った丁寧さ（レジスター）\n\n' +
+      '【バンドの目安】\n' +
+      '5 = ほぼ完全。誤りがあってもごく些細で、理解を妨げない\n' +
+      '4 = 良好。軽微な誤りはあるが、意図は明確に伝わる\n' +
+      '3 = 概ね伝わる。目立つ誤りや不自然さがいくつかある\n' +
+      '2 = 部分的にしか伝わらない。誤りが理解を妨げている\n' +
+      '1 = ほとんど伝わらない\n' +
+      '0 = 無解答、または課題と無関係\n\n' +
+      '【重要】制限時間内に書かれた「初稿」として評価してください。' +
+      '意味の伝達を妨げない軽微な誤りは減点しすぎないでください。' +
+      '一方で、日本語の直訳になっている箇所は lexis で厳しめに見てください。\n\n' +
+      '次のJSON形式で返してください。説明文は日本語、英文は英語で書いてください。\n' +
       '{\n' +
-      '  "score": 0から100の整数（文法の正確さ、自然さ、要件の充足を総合的に評価）,\n' +
+      '  "criteria": {\n' +
+      '    "task":         {"band": 0-5の数値, "comment": "日本語で1文"},\n' +
+      '    "grammar":      {"band": 0-5の数値, "comment": "日本語で1文"},\n' +
+      '    "lexis":        {"band": 0-5の数値, "comment": "日本語で1文"},\n' +
+      '    "organization": {"band": 0-5の数値, "comment": "日本語で1文"}\n' +
+      '  },\n' +
       '  "summary": "全体講評を日本語で1〜2文",\n' +
       '  "corrected": "学習者の意図を保ったまま自然な英語に書き直した全文",\n' +
       '  "issues": [{"original": "学習者の原文から該当箇所を抜粋", "suggestion": "修正後の表現", "reason": "なぜそうなるかを日本語で1文"}],\n' +
       '  "good": ["よくできている点を日本語で。最大3件"],\n' +
       '  "vocab": [{"p": "この解答から学ぶべき英語表現", "m": "日本語の意味"}]\n' +
       '}\n' +
-      'issues は最大5件、vocab は最大4件。解答が未記入や的外れな場合も、スコアは正直に付けてください。';
+      'issues は最大5件、vocab は最大4件。解答が未記入や的外れな場合も、バンドは正直に付けてください。';
   }
 
   function parseAiJson(text) {
@@ -740,8 +801,12 @@
           e3.retryable = true;   // 一度きりの揺らぎのことが多いので再試行する
           throw e3;
         }
+        var crit = j.criteria || null;
+        var fromBands = bandsToScore(crit);
         return {
-          score: Math.max(0, Math.min(100, Math.round(Number(j.score) || 0))),
+          criteria: crit,
+          // 総合点はバンドから自前で計算する（モデルごとの点数の揺れを避けるため）
+          score: fromBands !== null ? fromBands : Math.max(0, Math.min(100, Math.round(Number(j.score) || 0))),
           summary: String(j.summary || ''),
           corrected: String(j.corrected || ''),
           issues: Array.isArray(j.issues) ? j.issues.slice(0, 5) : [],
@@ -847,7 +912,8 @@
     var n = list.length;
     var recent = list.slice(-Math.max(1, PHASES[ph - 1].need));
     var avg = recent.length ? Math.round(recent.reduce(function (a, b) { return a + b.item.score; }, 0) / recent.length) : 0;
-    return { count: n, avg: avg, need: PHASES[ph - 1].need, needAvg: PHASES[ph - 1].avg };
+    var simple = recent.filter(function (g) { return !g.item.ai; }).length;
+    return { count: n, avg: avg, simple: simple, need: PHASES[ph - 1].need, needAvg: PHASES[ph - 1].avg };
   }
   function canAdvance() {
     if (state.phase >= PHASES.length) return false;
@@ -892,6 +958,7 @@
         bar = '<div class="mt-3 space-y-1.5">' +
               '<div class="h-2 rounded-full bg-slate-100 overflow-hidden"><div class="h-full bg-indigo-500" style="width:' + pc + '%"></div></div>' +
               '<div class="text-xs text-slate-500">解答 <strong class="text-slate-800">' + s.count + ' / ' + s.need + '</strong> 問 ・ 直近平均 <strong class="' + (s.avg >= s.needAvg ? 'text-emerald-600' : 'text-slate-800') + '">' + (s.count ? s.avg : '–') + '</strong> 点（必要 ' + s.needAvg + '点）</div>' +
+              (s.simple ? '<div class="text-xs text-amber-600">うち ' + s.simple + ' 問は簡易採点です（文法・自然さ未判定のため参考値）</div>' : '') +
               '</div>';
       }
       return '<div class="p-4 rounded-xl border ' + (isNow ? 'border-indigo-300 bg-indigo-50/60' : 'border-slate-200 bg-white') + (p.id > state.phase ? ' opacity-60' : '') + '">' +
@@ -1010,6 +1077,23 @@
 
       if (a.summary) out += '<p class="text-slate-800" style="font-size:1.0625rem;line-height:1.8">' + esc(a.summary) + '</p>';
 
+      if (a.criteria) {
+        out += '<div><p class="text-xs font-extrabold text-slate-500 mb-2">観点別評価（各5点満点）</p><div class="space-y-2">' +
+          RUBRIC.map(function (r) {
+            var c = a.criteria[r.key] || {};
+            var b = Math.max(0, Math.min(5, Number(c.band) || 0));
+            var pc = b / 5 * 100;
+            var col = b >= 4 ? 'bg-emerald-500' : b >= 3 ? 'bg-amber-500' : 'bg-rose-500';
+            return '<div class="bg-white border border-slate-200 rounded-xl p-3">' +
+              '<div class="flex items-center justify-between gap-3 mb-1.5">' +
+              '<span class="font-bold text-slate-800 text-sm">' + esc(r.label) + '<span class="text-slate-400 font-medium ml-1.5">×' + r.weight + '%</span></span>' +
+              '<span class="font-mono font-extrabold text-slate-900">' + b.toFixed(1) + '<span class="text-slate-400 text-xs font-medium"> / 5</span></span></div>' +
+              '<div class="h-1.5 rounded-full bg-slate-100 overflow-hidden"><div class="h-full ' + col + '" style="width:' + pc + '%"></div></div>' +
+              (c.comment ? '<p class="text-sm text-slate-600 mt-1.5">' + esc(c.comment) + '</p>' : '') +
+              '</div>';
+          }).join('') + '</div></div>';
+      }
+
       if (a.corrected) out += '<div><p class="text-xs font-extrabold text-slate-500 mb-1">自然な英語への書き直し</p>' +
         '<p class="q-en text-emerald-900 bg-emerald-50 border border-emerald-200 rounded-xl p-4">' + esc(a.corrected) + '</p></div>';
 
@@ -1033,7 +1117,7 @@
         '<button type="button" data-action="regrade" data-idx="' + item.__idx + '" class="px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition">この問題だけ再採点</button></div>'
       : '';
 
-    return head + '<div class="mt-4 rounded-xl border border-slate-200 p-4"><p class="text-xs font-extrabold text-slate-500 mb-2">フィードバック（簡易採点）</p>' +
+    return head + '<div class="mt-4 rounded-xl border border-slate-200 p-4"><p class="text-xs font-extrabold text-slate-500 mb-2">フィードバック（簡易採点 — 文法と自然さは判定していません）</p>' +
       '<ul class="space-y-1">' + g.notes.map(function (n) { return '<li class="text-sm text-slate-700 flex gap-2"><span class="text-slate-300">–</span><span>' + esc(n) + '</span></li>'; }).join('') + '</ul>' +
       (g.misses.length ? '<p class="text-sm text-rose-700 mt-3">使えなかったキー表現: ' + g.misses.map(function (m) { return '<span class="hl-key">' + esc(m.variants[0]) + '</span>'; }).join(' ') + '</p>' : '') +
       '</div>';
