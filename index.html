@@ -89,6 +89,7 @@
       <button type="button" data-action="nav" data-view="dashboard" id="nav-dashboard" class="nav-btn shrink-0 px-3 py-1.5 rounded-lg text-xs font-bold text-slate-600 transition"><i class="ph-bold ph-squares-four mr-1" aria-hidden="true"></i>ホーム</button>
       <button type="button" data-action="nav" data-view="writing"   id="nav-writing"   class="nav-btn shrink-0 px-3 py-1.5 rounded-lg text-xs font-bold text-slate-600 transition"><i class="ph-bold ph-pen-nib mr-1" aria-hidden="true"></i>本日の3問</button>
       <button type="button" data-action="nav" data-view="review"    id="nav-review"    class="nav-btn shrink-0 px-3 py-1.5 rounded-lg text-xs font-bold text-slate-600 transition"><i class="ph-bold ph-check-circle mr-1" aria-hidden="true"></i>添削結果</button>
+      <button type="button" data-action="nav" data-view="drill"     id="nav-drill"     class="nav-btn shrink-0 px-3 py-1.5 rounded-lg text-xs font-bold text-slate-600 transition"><i class="ph-bold ph-arrows-counter-clockwise mr-1" aria-hidden="true"></i>復習 (<span id="drill-count-badge">0</span>)</button>
       <button type="button" data-action="nav" data-view="bank"      id="nav-bank"      class="nav-btn shrink-0 px-3 py-1.5 rounded-lg text-xs font-bold text-slate-600 transition"><i class="ph-bold ph-cards mr-1" aria-hidden="true"></i>表現バンク (<span id="bank-count-badge">0</span>)</button>
       <button type="button" data-action="nav" data-view="history"   id="nav-history"   class="nav-btn shrink-0 px-3 py-1.5 rounded-lg text-xs font-bold text-slate-600 transition"><i class="ph-bold ph-clock-counter-clockwise mr-1" aria-hidden="true"></i>学習履歴</button>
       <button type="button" data-action="nav" data-view="settings"  id="nav-settings"  class="nav-btn shrink-0 px-3 py-1.5 rounded-lg text-xs font-bold text-slate-600 transition" title="AI添削の設定"><i class="ph-bold ph-gear" aria-hidden="true"></i><span class="sr-only">設定</span></button>
@@ -110,7 +111,7 @@
       頭の中の「直訳日本語」を<br class="hidden sm:inline">ネイティブの自然な言い回しへ
     </h2>
     <p class="text-slate-600 text-base md:text-lg" id="hero-sub">
-      本日は<strong class="text-indigo-700">自由英作文1問＋和文英訳2問</strong>。文の長さはランダムに選ばれます。
+      <span id="hero-mode">本日は<strong class="text-indigo-700">自由英作文1問＋和文英訳2問</strong>。文の長さはランダムに選ばれます。</span>
     </p>
 
     <div class="pt-1 flex flex-wrap gap-3">
@@ -138,8 +139,9 @@
       <div class="text-3xl font-extrabold text-emerald-600 mt-1"><span id="stat-avg">–</span><span class="text-sm font-medium text-slate-400 ml-1">点</span></div>
     </div>
     <div class="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
-      <div class="text-xs text-slate-500 font-bold">要復習 (SRS)</div>
+      <div class="text-xs text-slate-500 font-bold">要復習</div>
       <div class="text-3xl font-extrabold text-amber-600 mt-1"><span id="stat-recall">0</span><span class="text-sm font-medium text-slate-400 ml-1">語</span></div>
+      <button type="button" data-action="nav" data-view="drill" class="mt-2 text-xs font-bold text-indigo-600 hover:text-indigo-800 underline underline-offset-4">復習ドリルへ</button>
     </div>
   </div>
 
@@ -147,9 +149,9 @@
   <div class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-4">
     <div class="flex items-start justify-between gap-4 flex-wrap">
       <h3 class="font-extrabold text-slate-900 flex items-center gap-2 text-lg">
-        <i class="ph-bold ph-list-checks text-indigo-600" aria-hidden="true"></i> 単元別の習得状況
+        <i class="ph-bold ph-list-checks text-indigo-600" aria-hidden="true"></i> 単元別の習得状況 <span id="unit-phase-label" class="text-xs font-bold text-slate-400"></span>
       </h3>
-      <p class="text-xs text-slate-500 max-w-md">出題は<strong class="text-slate-700">未習の単元</strong>から順に、次に<strong class="text-slate-700">平均点の低い単元</strong>を優先して選ばれます。</p>
+      <p id="unit-mode" class="text-xs text-slate-500 max-w-md"></p>
     </div>
     <div id="unit-list" class="grid grid-cols-1 md:grid-cols-2 gap-3"></div>
   </div>
@@ -256,6 +258,31 @@
   </div>
 </section>
 
+<!-- ================= DRILL（復習ドリル） ================= -->
+<section id="view-drill" class="hidden space-y-6">
+  <div class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-3">
+    <div class="flex flex-wrap items-start justify-between gap-3">
+      <div>
+        <h2 class="text-2xl font-extrabold text-slate-900 flex items-center gap-2">
+          <i class="ph-bold ph-arrows-counter-clockwise text-indigo-600" aria-hidden="true"></i> 表現の復習ドリル
+        </h2>
+        <p class="text-sm text-slate-500 mt-1">本日の3問とは別に、まだ定着していない表現だけを短文で確認します。</p>
+      </div>
+      <div class="text-right shrink-0">
+        <div class="text-xs text-slate-500 font-bold">残り</div>
+        <div class="text-3xl font-extrabold text-indigo-600"><span id="drill-remaining">0</span><span class="text-sm text-slate-400 font-medium ml-1">語</span></div>
+      </div>
+    </div>
+    <p class="text-xs text-slate-500"><strong class="text-slate-700">3回正解すると復習リストから外れます。</strong>間違えるとカウントが1つ戻ります。</p>
+  </div>
+
+  <div id="drill-body"></div>
+
+  <p id="drill-empty" class="hidden text-center py-12 text-slate-500">
+    復習が必要な表現はありません。添削を受けると、使えなかった表現がここに溜まります。
+  </p>
+</section>
+
 <!-- ================= BANK ================= -->
 <section id="view-bank" class="hidden space-y-6">
   <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -360,6 +387,15 @@
         </h3>
         <p class="text-sm text-slate-500 mt-1">収録問題を使い切りそうになったら、AIが自動でまとめて作ります。</p>
       </div>
+      <div class="space-y-2">
+        <label for="q-mode" class="block text-sm font-extrabold text-slate-700">出題方式</label>
+        <select id="q-mode" class="w-full bg-white border-2 border-slate-200 focus:border-indigo-500 rounded-xl px-4 py-3 text-base font-semibold text-slate-900 focus:outline-none transition">
+          <option value="pool">収録問題だけを使う（API不要）</option>
+          <option value="auto">収録問題を使い、尽きそうなら補充する</option>
+          <option value="always">毎回あなた専用の問題を生成する</option>
+        </select>
+        <p id="q-mode-note" class="text-xs text-slate-500"></p>
+      </div>
       <div id="gen-status" class="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700"></div>
       <label class="flex items-center gap-3 cursor-pointer">
         <input id="gen-toggle" type="checkbox" class="w-5 h-5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
@@ -462,15 +498,16 @@
 
   /* ============ constants ============ */
   var STORAGE_KEY = 'engiflow:v3';
-  var VIEWS = ['dashboard', 'writing', 'review', 'bank', 'history', 'settings'];
+  var VIEWS = ['dashboard', 'writing', 'review', 'drill', 'bank', 'history', 'settings'];
   var CAT_LABEL = { 'new': '⚡ 新規知識', recall: '🧠 想起不足', mastered: '✅ 定着済み' };
   var LEN_LABEL = { short: '短文', medium: '標準', long: '長文' };
   var LEN_RANGE = { short: [5, 16], medium: [12, 28], long: [22, 50] };
 
+  // need: 総解答数 / avg: 全体平均 / unitMin: 単元あたり最低解答数 / unitAvg: 単元合格ライン
   var PHASES = [
-    { id: 1, name: '瞬発力と日常表現・句動詞の血肉化', desc: '日常チャット / Phrasal Verbs / 直訳脱却', need: 9,  avg: 78 },
-    { id: 2, name: '論理構成とTOEFL形式適応',         desc: 'TOEFL Email / Academic Discussion 基礎', need: 12, avg: 82 },
-    { id: 3, name: '高度なトーン調整と総合完成',       desc: 'Register切り替え / タイムアタック / 洗練リライト', need: 15, avg: 85 }
+    { id: 1, name: '瞬発力と日常表現・句動詞の血肉化', desc: '日常チャット / Phrasal Verbs / 直訳脱却', need: 9,  avg: 78, unitMin: 2, unitAvg: 75 },
+    { id: 2, name: '論理構成とTOEFL形式適応',         desc: 'TOEFL Email / Academic Discussion 基礎', need: 12, avg: 82, unitMin: 2, unitAvg: 80 },
+    { id: 3, name: '高度なトーン調整と総合完成',       desc: 'Register切り替え / タイムアタック / 洗練リライト', need: 15, avg: 85, unitMin: 2, unitAvg: 83 }
   ];
 
   /* ============ 問題プール ============ */
@@ -563,6 +600,154 @@
       casual:"Hi, I don't think I'm going to make Friday's deadline for the report. There turned out to be a lot more to double-check than I expected. Could we push it to next Wednesday?",
       formal:"Hello, I am afraid I will not be able to complete the report by this Friday. There were considerably more items requiring verification than anticipated. Would it be possible to extend the deadline to next Wednesday?",
       vocab:[{p:'make the deadline', m:'締切に間に合う'},{p:'turn out to be', m:'（結果的に）〜だとわかる'},{p:'push it to', m:'〜まで先送りする'}] },
+
+    // ===== Phase 2 =====
+    { id:'f11', cat:'p2purpose', len:'medium', genre:'TOEFL Email', title:'履修登録の締切に間に合わなかったため、教授にメールで相談する',
+      reqs:[
+        { text:'締切を過ぎてしまったことを詫び、事情（家族の急用で数日不在だった）を説明する。', keys:[['apologize','I\u2019m sorry','my apologies'],['family emergency','out of town']] },
+        { text:'まだ登録を受け付けてもらえないか尋ねる。', keys:[['still possible','would it be possible','still enroll','still register']] },
+        { text:'必要な書類があれば今日中に提出すると伝える。', keys:[['any documents','paperwork','whatever is needed'],['today','by the end of the day']] }
+      ],
+      casual:"Hi Professor, I'm really sorry I missed the registration deadline — I had a family emergency and was out of town for a few days. Would it still be possible to enroll in your course? If there's any paperwork you need, I can get it to you by the end of today.",
+      formal:"Dear Professor Lang, I apologize for missing the course registration deadline. I was out of town for several days due to a family emergency. Would it still be possible to enroll in your course? If any documentation is required, I would be happy to submit it by the end of today.",
+      vocab:[{p:'Would it still be possible to...', m:'まだ〜していただくことは可能でしょうか'},{p:'family emergency', m:'家族の急用'}] },
+
+    { id:'f12', cat:'p2position', len:'long', genre:'TOEFL Academic Discussion', title:'教授の問い「大学は対面授業に完全に戻すべきか」に対して、掲示板に投稿する',
+      reqs:[
+        { text:'冒頭で自分の立場を一文で明確に述べる。', keys:[['I believe','In my view','I think that','I would argue']] },
+        { text:'そう考える理由を1つ挙げる。', keys:[['because','the main reason','this is because']] },
+        { text:'理由を裏づける具体例を1つ書く。', keys:[['for example','for instance','in my own experience']] },
+        { text:'反対の立場にも一言触れたうえで、自分の主張に戻す。', keys:[['however','that said','while it is true','admittedly']] }
+      ],
+      casual:"I don't think universities should go fully back to in-person classes. The main reason is flexibility: students who commute or work part-time lose hours every week just traveling. For example, in my first year I spent two hours a day on trains, and that time could have gone into studying. That said, I understand that lab courses really do need to be in person. But for lecture-based classes, keeping an online option costs the university very little and helps a lot of students.",
+      formal:"In my view, universities should not return entirely to in-person instruction. The primary reason is flexibility: students who commute or hold part-time jobs lose considerable time each week simply traveling to campus. For instance, during my first year I spent two hours a day commuting, time that could have been devoted to coursework. Admittedly, laboratory courses require physical attendance. For lecture-based classes, however, maintaining an online option imposes little cost on the institution while benefiting a substantial number of students.",
+      vocab:[{p:'In my view / I would argue', m:'私の考えでは（立場表明）'},{p:'That said / Admittedly', m:'とはいえ・確かに（譲歩）'},{p:'For instance', m:'たとえば（具体例）'}] },
+
+    { id:'f13', cat:'p2register', len:'medium', genre:'TOEFL Email', title:'大学の事務局に、成績証明書の発行方法を問い合わせる',
+      reqs:[
+        { text:'自分の所属と学籍番号を名乗る。', keys:[['my name is','I am a','student ID','enrolled in']] },
+        { text:'成績証明書の発行手続きを教えてほしいと依頼する。', keys:[['transcript'],['how to request','the procedure','how I can obtain']] },
+        { text:'発行にかかる日数を尋ねる。', keys:[['how long','how many days','processing time']] }
+      ],
+      casual:"Hi, I'm a second-year student in the Economics department (ID: 20240815). Could you tell me how to request an official transcript? Also, how long does it usually take to process?",
+      formal:"Dear Registrar's Office, My name is Kenji Sato, a second-year student in the Department of Economics (Student ID: 20240815). I am writing to ask about the procedure for requesting an official transcript. Could you also let me know how long the processing normally takes? Thank you for your assistance.",
+      vocab:[{p:'official transcript', m:'成績証明書'},{p:'the procedure for -ing', m:'〜の手続き'},{p:'processing time', m:'発行・処理にかかる期間'}] },
+
+    // ===== Phase 3 =====
+    { id:'f14', cat:'p3tone', len:'medium', genre:'レジスター変換', title:'「来週の打ち合わせを再来週に延ばしたい」という同じ用件を、①親しい同僚へのチャット ②取引先への正式メール の2通りで書く',
+      reqs:[
+        { text:'①カジュアル版を書く（短く、口語的に）。', keys:[['push','bump','move'],['next week','the week after']] },
+        { text:'②フォーマル版を書く（丁寧に、理由を添えて）。', keys:[['would it be possible','I would like to propose','postpone','reschedule']] },
+        { text:'両方で、相手の都合を確認する一文を入れる。', keys:[['works for you','let me know','at your convenience','if that suits']] }
+      ],
+      casual:"Casual: Hey, any chance we could push next week's meeting to the week after? Let me know what works for you.\nFormal: Dear Ms. Tanaka, Would it be possible to postpone next week's meeting to the following week? A scheduling conflict has arisen on our side. Please let me know a time that would be convenient for you.",
+      formal:"Dear Ms. Tanaka, I am writing to ask whether it would be possible to postpone our meeting scheduled for next week to the following week, as a scheduling conflict has arisen on our end. I would be grateful if you could let me know which dates would be convenient for you.",
+      vocab:[{p:'push / bump（カジュアル）', m:'（予定を）ずらす'},{p:'postpone / reschedule（フォーマル）', m:'延期する'},{p:'at your convenience', m:'ご都合のよいときに'}] },
+
+    { id:'f15', cat:'p3concise', len:'medium', genre:'洗練リライト', title:'次の冗長な英文を、意味を保ったまま半分程度の長さに書き直す — "I am writing this email to you in order to inform you about the fact that the meeting which was scheduled to take place on Friday will now not be happening, due to the reason that several of the participants are not available."',
+      reqs:[
+        { text:'不要な前置き（I am writing to inform you that...）を削る。', keys:[['friday\u2019s meeting','the friday meeting','the meeting']] },
+        { text:'冗長な表現（due to the reason that / the fact that）を簡潔にする。', keys:[['because','since','due to']] },
+        { text:'受動的で回りくどい構造を能動的な一文にまとめる。', keys:[['canceled','cancelled','is off','has been canceled']] }
+      ],
+      casual:"Friday's meeting is canceled — too many people can't make it.",
+      formal:"Friday's meeting has been canceled because several participants are unavailable.",
+      vocab:[{p:'due to the reason that → because', m:'冗長表現の簡潔化'},{p:'the fact that → （削除）', m:'不要な名詞化を外す'}] },
+
+    // ===== 自由英作文が無かった単元の補強 =====
+    { id:'f16', cat:'phrasal', len:'medium', genre:'日常グループチャット', title:'空港へ向かう当日の朝、集合と移動の段取りを friends に伝える',
+      reqs:[
+        { text:'6時には家を出るつもりだと伝える。', keys:[['head out','get going','take off','leave']] },
+        { text:'途中で駅に寄って一人を拾っていくと伝える。', keys:[['pick','pick up'],['stop by','swing by']] },
+        { text:'荷物は前の晩に車に積んでおくと伝える。', keys:[['load','put','throw'],['the night before','tonight']] }
+      ],
+      casual:"Morning! I'm planning to head out around six. I'll swing by the station to pick up Yuki on the way. I'll load the bags into the car the night before, so we can just go.",
+      formal:"Good morning. I intend to leave at approximately six o'clock. I will stop at the station to collect Yuki on the way. I will load the luggage into the car the previous evening so that we can depart promptly.",
+      vocab:[{p:'head out', m:'出発する'},{p:'swing by ... to pick up', m:'〜に寄って拾っていく'},{p:'load ... into the car', m:'車に積み込む'}] },
+
+    { id:'f17', cat:'money', len:'medium', genre:'日常チャット', title:'旅行後の精算について、参加した友人たちに連絡する',
+      reqs:[
+        { text:'宿代とガソリン代を立て替えたので、合計を人数で割ったと伝える。', keys:[['covered','fronted','paid for'],['split','divided']] },
+        { text:'一人あたりいくらになるか伝える。', keys:[['each','per person','comes to','works out to']] },
+        { text:'急がないので今月中でいいと添える。', keys:[['no rush','whenever','by the end of the month']] }
+      ],
+      casual:"Hey everyone! I covered the hotel and the gas, so I split the total between the four of us. It comes to about 8,000 yen each. No rush at all — anytime this month is fine.",
+      formal:"Hello everyone. I paid for the accommodation and fuel in advance and have divided the total equally among the four of us. The amount comes to approximately 8,000 yen per person. There is no urgency; any time this month would be fine.",
+      vocab:[{p:'cover / front the cost', m:'立て替える'},{p:'it comes to ...', m:'合計〜になる'},{p:'no rush', m:'急ぎません'}] },
+
+    { id:'f18', cat:'idiom', len:'long', genre:'日常チャット', title:'楽しみにしていたイベントが中止になったことを友人に伝え、気持ちも添える',
+      reqs:[
+        { text:'せっかくチケットを取ったのに中止になったと伝える。', keys:[['all the way','after all that','went to the trouble','finally']] },
+        { text:'かなり残念だという気持ちを伝える。', keys:[['bummed','gutted','disappointed','let down']] },
+        { text:'とはいえ天気を考えると仕方ないと受け止める。', keys:[['that said','then again','i guess','can\u2019t be helped','nothing we can do']] },
+        { text:'代わりに別の日に集まらないかと提案する。', keys:[['instead','some other time','make up for it','another day']] }
+      ],
+      casual:"So after all the trouble I went through to get those tickets, they just canceled the whole thing. I'm honestly pretty bummed. That said, with the typhoon coming I guess there's nothing anyone could do. Want to get together some other weekend instead?",
+      formal:"After going to considerable trouble to secure the tickets, I was informed that the event has been canceled. I must admit I am quite disappointed. That said, given the approaching typhoon, I understand that the decision was unavoidable. Would you be interested in meeting on another weekend instead?",
+      vocab:[{p:'go to the trouble of -ing', m:'せっかく〜する'},{p:'be bummed', m:'がっかりしている'},{p:'that said', m:'とはいえ'}] },
+
+    { id:'f19', cat:'grammar', len:'long', genre:'職場メール', title:'進行中の作業の状況を、時制を使い分けて上司に報告する',
+      reqs:[
+        { text:'先週から継続して作業していると伝える（継続）。', keys:[['have been working','has been working'],['since last week']] },
+        { text:'昨日の時点で半分が完了したと伝える（完了）。', keys:[['have finished','have completed','had finished','as of yesterday']] },
+        { text:'残りは金曜までに終える予定だと伝える（予定）。', keys:[['will','plan to','expect to'],['by friday']] },
+        { text:'もっと早く相談していればよかったと振り返る（仮定法）。', keys:[['should have','i wish i had','if i had']] }
+      ],
+      casual:"Quick update: I've been working on the migration since last week, and as of yesterday I've finished about half of it. I should be able to wrap up the rest by Friday. Looking back, I probably should have asked for help earlier.",
+      formal:"I would like to provide an update. I have been working on the migration since last week, and as of yesterday I have completed approximately half of it. I expect to finish the remainder by Friday. In retrospect, I should have consulted you at an earlier stage.",
+      vocab:[{p:'have been -ing since', m:'〜からずっと…している'},{p:'as of yesterday', m:'昨日の時点で'},{p:'should have + 過去分詞', m:'〜すべきだった'}] },
+
+    { id:'f20', cat:'p2engage', len:'long', genre:'TOEFL Academic Discussion', title:'教授の問い「SNSは若者の政治参加を促すか」に対し、他の学生の投稿に触れてから自説を述べる',
+      reqs:[
+        { text:'ある学生の意見に触れ、部分的に同意する。', keys:[['makes a good point','raises a good point','i agree with','as ... pointed out']] },
+        { text:'ただし見落としがあると指摘する。', keys:[['however','that said','overlooks','misses']] },
+        { text:'自分の立場を明確に述べる。', keys:[['i would argue','in my view','my position','i believe']] },
+        { text:'具体例で裏づける。', keys:[['for example','for instance','in my own experience']] }
+      ],
+      casual:"Maya makes a good point that social media lowers the barrier to getting involved. That said, I think it overlooks how shallow that involvement often is. I'd argue that clicking 'like' rarely turns into real action. For example, a campaign at my university got thousands of online shares but only about thirty people showed up to the actual meeting.",
+      formal:"Maya raises a valid point that social media lowers the barrier to political participation. However, I believe this view overlooks how superficial such participation often is. I would argue that online engagement rarely translates into concrete action. For instance, a campaign at my university received thousands of shares online, yet only around thirty students attended the actual meeting.",
+      vocab:[{p:'raises a valid point', m:'もっともな指摘をしている'},{p:'overlooks', m:'見落としている'},{p:'translate into', m:'（実際の行動などに）つながる'}] },
+
+    { id:'f21', cat:'p2support', len:'long', genre:'TOEFL Academic Discussion', title:'「高校生にアルバイトを認めるべきか」について、主張・理由・具体例の順で書く',
+      reqs:[
+        { text:'自分の立場を一文で述べる。', keys:[['i believe','in my view','i would argue']] },
+        { text:'なぜそう考えるのか、理由を述べる。', keys:[['because','the main reason','this is because']] },
+        { text:'理由を裏づける具体例を書く。', keys:[['for example','for instance','in my own experience','such as']] },
+        { text:'その具体例から何が言えるかをまとめる。', keys:[['this shows','which suggests','in short','overall']] }
+      ],
+      casual:"I think high school students should be allowed to work part-time. The main reason is that it teaches them things school can't — handling money, dealing with difficult customers, showing up on time. For example, I worked at a cafe in my second year, and it was the first time I understood what it meant to be responsible to someone other than my parents. That kind of lesson is hard to get from a textbook.",
+      formal:"I believe high school students should be permitted to hold part-time jobs. The primary reason is that such work develops skills that classrooms cannot easily teach: managing money, handling difficult customers, and maintaining punctuality. For instance, I worked at a cafe during my second year, and it was the first occasion on which I felt genuinely accountable to someone outside my family. This suggests that practical responsibility is best learned through experience.",
+      vocab:[{p:'The main reason is that ...', m:'主な理由は〜だからです'},{p:'This suggests that ...', m:'このことは〜を示している'},{p:'accountable to', m:'〜に対して責任がある'}] },
+
+    { id:'f22', cat:'p2cohesion', len:'medium', genre:'TOEFL Academic Discussion', title:'「在宅勤務は生産性を上げるか」について、接続表現でつなぎながら賛否両面を書く',
+      reqs:[
+        { text:'まず一般に言われている利点を挙げる。', keys:[['to begin with','first','on the one hand','it is often said']] },
+        { text:'次に、それに対する反論を接続表現でつなぐ。', keys:[['however','on the other hand','that said','nevertheless']] },
+        { text:'最後に自分の結論を示す。', keys:[['overall','in the end','on balance','therefore']] }
+      ],
+      casual:"To begin with, working from home clearly saves time — no commute, fewer interruptions. However, it also makes it much harder to ask a quick question, so small problems can sit unsolved for days. On balance, I'd say a mix of both works better than either extreme.",
+      formal:"To begin with, remote work clearly saves time by eliminating commuting and reducing interruptions. However, it also makes informal consultation more difficult, so minor problems may remain unresolved for days. On balance, I would argue that a hybrid arrangement is preferable to either extreme.",
+      vocab:[{p:'To begin with', m:'まず第一に'},{p:'On balance', m:'総合的に見ると'},{p:'Nevertheless', m:'それにもかかわらず'}] },
+
+    { id:'f23', cat:'p3syntax', len:'medium', genre:'構文の書き換え', title:'次の単調な英文を、分詞構文・関係詞・仮主語などを使って2文程度にまとめ直す — "I finished the report. Then I sent it to my manager. My manager was on a business trip. He replied the next morning. His reply was very short."',
+      reqs:[
+        { text:'分詞構文を1つ使う。', keys:[['having finished','after finishing','having completed']] },
+        { text:'関係詞を1つ使う。', keys:[['who was','which was','who had']] },
+        { text:'5文を2文程度にまとめる。', keys:[['replied','reply']] }
+      ],
+      casual:"Having finished the report, I sent it to my manager, who was away on a business trip. His reply came the next morning and was very short.",
+      formal:"Having completed the report, I forwarded it to my manager, who was away on a business trip at the time. He replied the following morning, though his response was extremely brief.",
+      vocab:[{p:'Having + 過去分詞', m:'〜したうえで（分詞構文）'},{p:', who was ...', m:'（非制限用法の関係詞）'}] },
+
+    { id:'f24', cat:'p3hedge', len:'medium', genre:'ヘッジ表現', title:'「あなたの分析は間違っている」という内容を、角を立てずに同僚へ伝える',
+      reqs:[
+        { text:'断定を避けつつ、数字に疑問があると伝える。', keys:[['i may be missing','i might be wrong','it seems','i wonder if']] },
+        { text:'具体的にどこが気になるかを示す。', keys:[['the figure','the number','the calculation','row','column']] },
+        { text:'確認してもらえないかと依頼する。', keys:[['could you','would you mind','when you get a chance']] }
+      ],
+      casual:"I might be missing something here, but the total in the third column doesn't quite line up with the raw data. Could you take another look when you get a chance?",
+      formal:"I may well be overlooking something, but the total in the third column does not appear to align with the raw data. Would you mind reviewing it when you have a moment?",
+      vocab:[{p:'I might be missing something', m:'私が見落としているかもしれませんが'},{p:'doesn\u2019t quite line up with', m:'〜と少し合わない'},{p:'when you get a chance', m:'手が空いたときに'}] },
 
     { id:'f6', cat:'work', len:'long', genre:'職場メール', title:'新しいプロジェクトの進め方について、上司に提案する',
       reqs:[
@@ -742,6 +927,43 @@
       keys:[['until the end of','by the end of'],['submit','turn it in']], tip:'期限は by、継続の終点は until。ここは have until が自然。',
       vocab:[{p:'have until ...', m:'〜までに（猶予がある）'}] },
 
+    // ===== Phase 2 =====
+    { id:'t60', cat:'p2purpose', len:'medium', jp:'本メールは、来週の面談の日程を確認するためにお送りしています。', en:"I am writing to confirm the date of our meeting next week.",
+      keys:[['I am writing to','I\u2019m writing to'],['confirm']], tip:'TOEFL Emailの定型。目的は I am writing to ... で最初に示します。',
+      vocab:[{p:'I am writing to ...', m:'〜のためにご連絡しています'}] },
+    { id:'t61', cat:'p2register', len:'medium', jp:'ご多忙のところ恐れ入りますが、ご確認いただけますと幸いです。', en:"I understand you are very busy, but I would appreciate it if you could take a look.",
+      keys:[['I would appreciate it if','I would be grateful if'],['busy']], tip:'「〜いただけますと幸いです」は I would appreciate it if you could ...。',
+      vocab:[{p:'I would appreciate it if you could', m:'〜いただけますと幸いです'}] },
+    { id:'t62', cat:'p2position', len:'medium', jp:'私は、この方針には賛成できないという立場です。', en:"My position is that I cannot support this policy.",
+      keys:[['my position is','I would argue','I do not agree','I disagree']], tip:'立場表明は My position is that / I would argue that で明確に。',
+      vocab:[{p:'My position is that ...', m:'私の立場は〜です'}] },
+    { id:'t63', cat:'p2engage', len:'long', jp:'ケンさんの指摘はもっともだと思いますが、私はもう一点付け加えたいと思います。', en:"I think Ken makes a fair point, but I would like to add one more consideration.",
+      keys:[['makes a fair point','raises a good point','I agree with ken'],['add','I would like to add']], tip:'Academic Discussionでは他の学生に触れてから自説を重ねます。',
+      vocab:[{p:'makes a fair point', m:'もっともな指摘をしている'},{p:'I would like to add', m:'一点付け加えたい'}] },
+    { id:'t64', cat:'p2support', len:'long', jp:'その理由は、実際に私自身が昨年同じ問題を経験したからです。', en:"The reason is that I myself experienced the same problem last year.",
+      keys:[['the reason is that','this is because'],['I myself','in my own experience','personally']], tip:'主張の後に理由と自分の経験を続けると説得力が出ます。',
+      vocab:[{p:'The reason is that ...', m:'その理由は〜だからです'},{p:'in my own experience', m:'私自身の経験では'}] },
+    { id:'t65', cat:'p2cohesion', len:'medium', jp:'一方で、費用の面では課題が残ります。', en:"That said, challenges remain in terms of cost.",
+      keys:[['that said','on the other hand','however'],['in terms of']], tip:'譲歩・転換は That said / On the other hand。',
+      vocab:[{p:'That said', m:'とはいえ・一方で'},{p:'in terms of', m:'〜の面では'}] },
+
+    // ===== Phase 3 =====
+    { id:'t66', cat:'p3tone', len:'medium', jp:'（上司へ）その案には少し懸念があります。', en:"I do have some reservations about that approach.",
+      keys:[['reservations','concerns','hesitant']], tip:'目上への反対は I disagree ではなく I have some reservations が安全です。',
+      vocab:[{p:'have reservations about', m:'〜に懸念がある'}] },
+    { id:'t67', cat:'p3concise', len:'short', jp:'（冗長を避けて）現時点においては、決定はなされていません。', en:"No decision has been made yet.",
+      keys:[['no decision has been made','nothing has been decided']], tip:'At this point in time は At present や yet で足ります。',
+      vocab:[{p:'No decision has been made yet', m:'まだ決定していません'}] },
+    { id:'t68', cat:'p3syntax', len:'long', jp:'資料を確認したうえで、問題がなければ明日承認します。', en:"Having reviewed the document, I will approve it tomorrow if there are no issues.",
+      keys:[['having reviewed','once I have reviewed','after reviewing'],['if there are no issues','if everything looks fine']], tip:'分詞構文（Having + 過去分詞）で文を締まった形にできます。',
+      vocab:[{p:'Having + 過去分詞', m:'〜したうえで（分詞構文）'}] },
+    { id:'t69', cat:'p3hedge', len:'medium', jp:'この結果は、必ずしも全体の傾向を示しているとは限りません。', en:"These results do not necessarily reflect the overall trend.",
+      keys:[['do not necessarily','may not necessarily'],['reflect','indicate']], tip:'断定を避けるヘッジは not necessarily / may。',
+      vocab:[{p:'not necessarily', m:'必ずしも〜とは限らない'}] },
+    { id:'t70', cat:'p3hedge', len:'medium', jp:'私の理解が正しければ、締切は月末だったはずです。', en:"If I understand correctly, the deadline was supposed to be the end of the month.",
+      keys:[['if I understand correctly','if I\u2019m not mistaken'],['was supposed to be']], tip:'やわらかい確認は If I understand correctly / If I\u2019m not mistaken。',
+      vocab:[{p:'If I understand correctly', m:'私の理解が正しければ'},{p:'be supposed to', m:'〜のはずだった'}] },
+
     { id:'t18', cat:'idiom', len:'long', jp:'ずっと気になっていたお店にやっと行けました。並んだ甲斐がありましたね。', en:"I finally made it to the restaurant I'd been curious about. It was worth the wait in line.",
       keys:[['finally','made it'],['worth the wait','worth it']], tip:'「甲斐があった」は worth it / worth the wait。',
       vocab:[{p:'worth the wait', m:'待った甲斐があった'},{p:'made it to', m:'（やっと）行けた'}] }
@@ -755,7 +977,7 @@
 
   /* ============ state ============ */
   function defaultState() {
-    return { bank: SEED_BANK.slice(), sessions: {}, phase: 1, filter: 'all', gen: { free: [], translate: [] } };
+    return { bank: SEED_BANK.slice(), sessions: {}, phase: 1, filter: 'all', gen: { free: [], translate: [] }, drills: {} };
   }
 
   // 静的プール + AI生成分
@@ -769,7 +991,8 @@
         if (p && Array.isArray(p.bank) && p.sessions) {
           return {
             bank: p.bank, sessions: p.sessions, phase: p.phase || 1, filter: 'all',
-            gen: (p.gen && Array.isArray(p.gen.free)) ? p.gen : { free: [], translate: [] }
+            gen: (p.gen && Array.isArray(p.gen.free)) ? p.gen : { free: [], translate: [] },
+            drills: (p.drills && typeof p.drills === 'object') ? p.drills : {}
           };
         }
       }
@@ -805,17 +1028,27 @@
     taken.forEach(function (id) { used[id] = 1; });
 
     var order = unitPriority().map(function (c) { return c.id; });
-    if (!order.length) order = UNITS.map(function (u) { return u.id; });
-    // seed で開始位置をずらし、同じ単元ばかりが続かないようにする
-    var rot = order.slice(seed % order.length).concat(order.slice(0, seed % order.length));
+    if (!order.length) order = unitsOfPhase(state.phase).map(function (u) { return u.id; });
+    // 網羅段階では seed でずらして偏りを防ぐ。仕上げ段階では弱点を最優先にするためずらさない。
+    var rot = order;
+    if (priorityMode() === 'coverage' && order.length) {
+      var k = seed % order.length;
+      rot = order.slice(k).concat(order.slice(0, k));
+    }
 
-    var f = pickByUnit(freePool(), rot, used);
+    var inPhase = function (q) { return unitPhase(q.cat) === state.phase; };
+    var fp = freePool().filter(inPhase), tp = trPool().filter(inPhase);
+    // そのフェーズの問題が尽きている場合は全体から補う
+    if (!fp.length) fp = freePool();
+    if (!tp.length) tp = trPool();
+
+    var f = pickByUnit(fp, rot, used);
     used[f.id] = 1;
-    var t1 = pickByUnit(trPool(), rot, used);
+    var t1 = pickByUnit(tp, rot, used);
     used[t1.id] = 1;
     // 2問目は別単元を優先する
     var rot2 = rot.filter(function (u) { return u !== t1.cat; }).concat([t1.cat]);
-    var t2 = pickByUnit(trPool(), rot2, used);
+    var t2 = pickByUnit(tp, rot2, used);
 
     return [
       { qid: f.id,  type: 'free',      answer: '', score: null, round: round },
@@ -826,6 +1059,8 @@
 
   function ensureSession(dateKey) {
     if (!state.sessions[dateKey]) {
+      // 個別生成モードでは、開始ボタンを押すまで問題を作らない
+      if (personalizedOn()) return { rounds: 0, items: [], phase: state.phase, temp: true };
       state.sessions[dateKey] = { rounds: 1, items: buildRound(dateKey, 1), phase: state.phase };
       save();
     }
@@ -845,6 +1080,75 @@
     return null;
   }
 
+
+  /* ============ 簡易採点で測れる指標 ============ */
+  var CONNECTIVES = ['however', 'that said', 'on the other hand', 'in addition', 'moreover', 'furthermore',
+    'therefore', 'as a result', 'nevertheless', 'to begin with', 'first of all', 'secondly', 'finally',
+    'although', 'while', 'because', 'since', 'in turn', 'admittedly', 'overall', 'on balance', 'in conclusion'];
+  var STANCE = ['i believe', 'in my view', 'i would argue', 'my position', 'i think that', 'i agree', 'i disagree',
+    'from my perspective', 'it seems to me'];
+  var EXAMPLES = ['for example', 'for instance', 'in my own experience', 'in my experience', 'such as',
+    'specifically', 'to illustrate', 'this shows', 'which suggests'];
+  var WORDY = ['due to the reason that', 'the fact that', 'at this point in time', 'in order to',
+    'i am writing this email to', 'it is important to note that', 'there is a possibility that',
+    'in spite of the fact that', 'for the purpose of', 'in the event that', 'a large number of',
+    'make a decision', 'conduct an investigation', 'has the ability to', 'is able to'];
+  var HEDGES = ['not necessarily', 'might', 'may well', 'tend to', 'it seems', 'appears to', 'somewhat',
+    'i would say', 'if i understand correctly', 'perhaps', 'i might be', 'i may be', 'would you mind',
+    'i wonder if', 'does not appear'];
+  var FORMAL_MARKERS = ['would you mind', 'i would appreciate', 'i am writing', 'kindly', 'i would be grateful',
+    'unfortunately', 'regarding', 'please find', 'i would like to', 'sincerely'];
+  var CASUAL_MARKERS = ['hey', 'yeah', 'gonna', 'wanna', 'kinda', 'a lot of stuff', 'guys', 'cool', 'awesome'];
+  var CONTRACTION_RE = /\b(i'm|don't|can't|won't|it's|let's|we're|you're|i'll|that's|didn't|isn't|aren't|couldn't|i've|we've)\b/;
+
+  function countAny(norm, list) {
+    var n = 0;
+    for (var i = 0; i < list.length; i++) {
+      if (norm.indexOf(' ' + normalize(list[i]).trim() + ' ') !== -1) n++;
+    }
+    return n;
+  }
+  function sentencesOf(t) {
+    return String(t).split(/[.!?]+/).map(function (x) { return x.trim(); }).filter(Boolean);
+  }
+  function typeTokenRatio(t) {
+    var w = String(t).toLowerCase().replace(/[^a-z\s']/g, ' ').split(/\s+/).filter(Boolean);
+    if (w.length < 8) return 1;
+    var seen = {}, uniq = 0;
+    w.forEach(function (x) { if (!seen[x]) { seen[x] = 1; uniq++; } });
+    return uniq / w.length;
+  }
+  function sentenceOpenerVariety(t) {
+    var ss = sentencesOf(t);
+    if (ss.length < 2) return 1;
+    var seen = {}, uniq = 0;
+    ss.forEach(function (x) {
+      var w = x.split(/\s+/)[0].toLowerCase();
+      if (!seen[w]) { seen[w] = 1; uniq++; }
+    });
+    return uniq / ss.length;
+  }
+  function clamp5(v) { return Math.max(0, Math.min(5, v)); }
+  function ratioBand(r) { return clamp5(Math.round(r * 5 * 10) / 10); }
+
+  // 文法は簡易採点では判定できないため、体裁の破綻だけを減点した推定値を返す
+  function formBand(text) {
+    var b = 3.5;                                     // 未判定の中立値
+    if (!/^[A-Z"']/.test(text)) b -= 0.7;
+    if (!/[.!?]\s*$/.test(text)) b -= 0.5;
+    if (/[\u3040-\u30ff\u4e00-\u9faf]/.test(text)) b -= 2.5;
+    if (/\bi\b/.test(text)) b -= 0.5;                // 一人称 i の小文字
+    if (/\s{2,}|\s[,.]/.test(text)) b -= 0.2;
+    return clamp5(b);
+  }
+
+  function lengthBand(wc, range) {
+    if (wc < range[0] * 0.5) return clamp5(wc / (range[0] * 0.5) * 2.5);
+    if (wc < range[0]) return clamp5(2.5 + (wc - range[0] * 0.5) / (range[0] * 0.5) * 2.5);
+    if (wc <= range[1] * 1.5) return 5;
+    return clamp5(5 - (wc - range[1] * 1.5) / range[1] * 2);
+  }
+
   /* ============ 採点（簡易ヒューリスティック） ============ */
   function normalize(s) {
     return ' ' + String(s).toLowerCase()
@@ -862,7 +1166,7 @@
   function grade(item) {
     var q = questionOf(item);
     var text = (item.answer || '').trim();
-    if (!q || !text) return { score: 0, hits: [], misses: [], notes: ['未解答です。'] };
+    if (!q || !text) return { score: 0, hits: [], misses: [], notes: ['未解答です。'], bands: null, phase: state.phase };
 
     var norm = normalize(text);
     var groups = item.type === 'free'
@@ -870,34 +1174,73 @@
       : q.keys.map(function (k, i) { return { label: 'キー表現' + (i + 1), variants: k }; });
 
     var hits = [], misses = [];
-    groups.forEach(function (g) { (hasAny(norm, g.variants) ? hits : misses).push(g); });
+    groups.forEach(function (g) { (hasAnyLoose(norm, g.variants) ? hits : misses).push(g); });
 
-    var keyScore = groups.length ? (hits.length / groups.length) : 1;   // 70点分
+    var keyRatio = groups.length ? (hits.length / groups.length) : 1;
     var notes = [];
-
-    // 長さの妥当性（15点分）
     var range = LEN_RANGE[q.len] || LEN_RANGE.medium;
-    var wc = wordCount(text), lenScore;
-    if (wc < range[0]) { lenScore = Math.max(0, wc / range[0]); notes.push('もう少し情報を足しましょう（目安 ' + range[0] + '〜' + range[1] + ' words / 現在 ' + wc + '）。'); }
-    else if (wc > range[1] * 1.6) { lenScore = 0.6; notes.push('やや冗長です。要点を絞ると自然になります。'); }
-    else { lenScore = 1; }
+    var wc = wordCount(text);
+    var ph = state.phase;
+    var bands = {};
 
-    // 体裁（15点分）
-    var formScore = 1;
-    if (!/^[A-Z"']/.test(text)) { formScore -= 0.4; notes.push('文頭は大文字で始めましょう。'); }
-    if (!/[.!?]\s*$/.test(text)) { formScore -= 0.3; notes.push('文末に句読点（. ! ?）を付けましょう。'); }
-    if (/[\u3040-\u30ff\u4e00-\u9faf]/.test(text)) { formScore -= 0.6; notes.push('日本語が残っています。'); }
-    formScore = Math.max(0, formScore);
+    var lenB = lengthBand(wc, range);
+    var formB = formBand(text);
+    if (wc < range[0]) notes.push('もう少し情報を足しましょう（目安 ' + range[0] + '〜' + range[1] + ' words / 現在 ' + wc + '）。');
+    if (!/^[A-Z"']/.test(text)) notes.push('文頭は大文字で始めましょう。');
+    if (!/[.!?]\s*$/.test(text)) notes.push('文末に句読点（. ! ?）を付けましょう。');
+    if (/[\u3040-\u30ff\u4e00-\u9faf]/.test(text)) notes.push('日本語が残っています。');
 
-    // AI採点（ルーブリック基準）と点数感覚を近づけるための配分。
-    // 簡易採点では文法・自然さを判定できないため、その分は減点せず中立に扱う。
-    var score = Math.round(keyScore * 55 + lenScore * 20 + formScore * 25);
-    score = Math.max(0, Math.min(100, score));
+    var essay = (item.type === 'free');
+
+    if (ph === 2 && !essay) {
+      // 和文英訳の1〜2文に接続表現や具体例を求めるのは筋違いなので、
+      // キー表現の再現度と体裁で評価する
+      bands.task = ratioBand(keyRatio);
+      bands.organization = ratioBand(keyRatio * 0.6 + (lenB / 5) * 0.4);
+      bands.grammar = formB;
+      bands.lexis = ratioBand(keyRatio * 0.7 + typeTokenRatio(text) * 0.3);
+    } else if (ph === 2) {
+      // 論理構成は、接続表現・立場表明・具体例の有無で推定できる
+      var conn = countAny(norm, CONNECTIVES);
+      var stance = countAny(norm, STANCE);
+      var exs = countAny(norm, EXAMPLES);
+      var logic = clamp5((conn >= 2 ? 2 : conn) + (stance ? 1.5 : 0) + (exs ? 1.5 : 0));
+      bands.task = ratioBand(keyRatio * 0.75 + (lenB / 5) * 0.25);
+      bands.organization = logic;
+      bands.grammar = formB;
+      bands.lexis = clamp5(ratioBand(typeTokenRatio(text)) * 0.6 + sentenceOpenerVariety(text) * 5 * 0.4);
+      if (!stance) notes.push('自分の立場を一文で明示しましょう（I believe / In my view など）。');
+      if (!exs) notes.push('具体例が見当たりません（For example / In my experience など）。');
+      if (conn < 2) notes.push('接続表現が少なめです（However / That said / Overall など）。');
+    } else if (ph === 3) {
+      // トーンの一貫性と冗長さは機械的に検出できる
+      var wordy = countAny(norm, WORDY);
+      var hedge = countAny(norm, HEDGES);
+      var fm = countAny(norm, FORMAL_MARKERS);
+      var cm = countAny(norm, CASUAL_MARKERS) + (CONTRACTION_RE.test(text) ? 1 : 0);
+      var mixed = (fm > 0 && cm > 0);
+      bands.organization = clamp5(3.5 + (hedge ? 1 : 0) + (fm || cm ? 0.5 : 0) - (mixed ? 2 : 0));
+      bands.lexis = clamp5(ratioBand(typeTokenRatio(text)) * 0.6 + sentenceOpenerVariety(text) * 5 * 0.4);
+      bands.task = clamp5(5 - wordy * 1.2 - (wc > range[1] * 1.4 ? 1.5 : 0));
+      bands.grammar = formB;
+      if (mixed) notes.push('丁寧な表現とくだけた表現（短縮形など）が混在しています。トーンを揃えましょう。');
+      if (wordy) notes.push('冗長な言い回しが ' + wordy + ' 箇所あります（due to the reason that → because など）。');
+      if (!hedge && (essay || q.cat === 'p3hedge')) notes.push('断定を和らげる表現（might / it seems / I may be ...）が使えると角が立ちません。');
+    } else {
+      bands.task = ratioBand(keyRatio);
+      bands.grammar = formB;
+      bands.lexis = ratioBand(keyRatio * 0.7 + typeTokenRatio(text) * 0.3);
+      bands.organization = clamp5(lenB * 0.7 + (sentencesOf(text).length > 1 ? 1.5 : 0.5));
+    }
+
+    var score = bandsToScore(bands, ph);
+    if (score === null) score = 0;
 
     if (misses.length) notes.unshift('狙いのキー表現のうち ' + misses.length + ' 個が使われていません。');
     else notes.unshift('狙いのキー表現をすべて使えています。');
+    notes.push('※ 簡易採点では文法の正確さを判定できません。「文法・語法」は推定値です。');
 
-    return { score: score, hits: hits, misses: misses, notes: notes };
+    return { score: score, hits: hits, misses: misses, notes: notes, bands: bands, phase: ph };
   }
 
 
@@ -915,31 +1258,66 @@
 
   // 学習の体系。出題はこの単元を巡回し、未習・弱点の単元を優先する。
   var UNITS = [
-    { id:'phrasal',  name:'句動詞（移動・立ち寄る）',   desc:'go / come の直訳から抜け、head out, stop by, drop off などで表す' },
-    { id:'request',  name:'依頼・お願い',               desc:'please 一辺倒をやめ、Would you mind / Could you などで頼む' },
-    { id:'decline',  name:'断り・延期・謝罪',           desc:'できない・遅れる・延ばしたいを角を立てずに伝える' },
-    { id:'schedule', name:'予定・日程・期限',           desc:'until と by の使い分け、都合を聞く、日程を動かす' },
-    { id:'money',    name:'お金・費用・割り勘',         desc:'split, chip in, worth the price など金銭にまつわる口語' },
-    { id:'work',     name:'職場の連絡・報告',           desc:'共有・確認・保留・本題に入るなど業務連絡の定型' },
-    { id:'idiom',    name:'日常の慣用表現',             desc:'せっかく・念のため・大げさ など単語対応のない日本語' },
-    { id:'grammar',  name:'直訳しやすい文法',           desc:'時制、自動詞と他動詞、end up -ing などの構文' }
+    // ---- Phase 1: 日常表現・句動詞・直訳脱却 ----
+    { ph:1, id:'phrasal',  name:'句動詞（移動・立ち寄る）',   desc:'go / come の直訳から抜け、head out, stop by, drop off などで表す' },
+    { ph:1, id:'request',  name:'依頼・お願い',               desc:'please 一辺倒をやめ、Would you mind / Could you などで頼む' },
+    { ph:1, id:'decline',  name:'断り・延期・謝罪',           desc:'できない・遅れる・延ばしたいを角を立てずに伝える' },
+    { ph:1, id:'schedule', name:'予定・日程・期限',           desc:'until と by の使い分け、都合を聞く、日程を動かす' },
+    { ph:1, id:'money',    name:'お金・費用・割り勘',         desc:'split, chip in, worth the price など金銭にまつわる口語' },
+    { ph:1, id:'work',     name:'職場の連絡・報告',           desc:'共有・確認・保留・本題に入るなど業務連絡の定型' },
+    { ph:1, id:'idiom',    name:'日常の慣用表現',             desc:'せっかく・念のため・大げさ など単語対応のない日本語' },
+    { ph:1, id:'grammar',  name:'直訳しやすい文法',           desc:'時制、自動詞と他動詞、end up -ing などの構文' },
+
+    // ---- Phase 2: TOEFL形式への適応（Write an Email / Academic Discussion）----
+    { ph:2, id:'p2purpose',  name:'Email: 目的の達成',        desc:'依頼・説明・確認など複数の用件を、漏らさず具体的に書き切る' },
+    { ph:2, id:'p2register', name:'Email: 丁寧さの調整',      desc:'教授・事務局など相手に応じたレジスターを一貫させる' },
+    { ph:2, id:'p2position', name:'Discussion: 立場の明示',   desc:'冒頭で自分の立場を一文で言い切り、最後までぶらさない' },
+    { ph:2, id:'p2engage',   name:'Discussion: 他者への言及', desc:'他の学生の意見に触れてから自分の主張を重ねる' },
+    { ph:2, id:'p2support',  name:'理由と具体例による裏づけ', desc:'主張に理由を付け、抽象論で終わらせず具体例まで書く' },
+    { ph:2, id:'p2cohesion', name:'論理のつなぎ',             desc:'However, That said, In turn など接続表現で流れを作る' },
+
+    // ---- Phase 3: トーン調整と洗練 ----
+    { ph:3, id:'p3tone',    name:'トーンの変換',              desc:'同じ内容をカジュアル／中立／フォーマルに書き分ける' },
+    { ph:3, id:'p3concise', name:'簡潔さと洗練',              desc:'冗長な言い回しを削り、同じ意味を短く強く言う' },
+    { ph:3, id:'p3syntax',  name:'構文の幅',                  desc:'分詞構文・関係詞・仮主語などで単調な文の連続を避ける' },
+    { ph:3, id:'p3hedge',   name:'婉曲とヘッジ',              desc:'断定を避ける、やわらげる、含みを持たせる言い方' }
   ];
   var UNIT_BY_ID = {};
   UNITS.forEach(function (u) { UNIT_BY_ID[u.id] = u; });
   function unitName(id) { return (UNIT_BY_ID[id] || {}).name || 'その他'; }
+  function unitPhase(id) { return (UNIT_BY_ID[id] || {}).ph || 1; }
+  function unitsOfPhase(ph) { return UNITS.filter(function (u) { return u.ph === ph; }); }
 
-  var RUBRIC = [
-    { key: 'task',    label: '課題達成',      weight: 30, hint: '要件をすべて満たし、具体的に書けているか' },
-    { key: 'grammar', label: '文法・語法',    weight: 30, hint: '時制・語法・冠詞などの正確さ' },
-    { key: 'lexis',   label: '語彙・自然さ',  weight: 25, hint: '直訳を脱し、場面に合う自然な表現か' },
-    { key: 'organization', label: '構成・トーン', weight: 15, hint: '流れの分かりやすさと相手に合った丁寧さ' }
-  ];
+  // フェーズごとに採点の重みを変える（学習段階で見るべき観点が変わるため）
+  var RUBRICS = {
+    1: [
+      { key: 'task',         label: '課題達成',     weight: 30, hint: '要件をすべて満たし、具体的に書けているか' },
+      { key: 'grammar',      label: '文法・語法',   weight: 30, hint: '時制・語法・冠詞などの正確さ' },
+      { key: 'lexis',        label: '語彙・自然さ', weight: 25, hint: '日本語の直訳を脱し、場面に合う自然な表現か' },
+      { key: 'organization', label: '構成・トーン', weight: 15, hint: '流れの分かりやすさと相手に合った丁寧さ' }
+    ],
+    2: [
+      { key: 'task',         label: '課題達成',       weight: 25, hint: '求められた用件や立場を漏れなく示せているか' },
+      { key: 'organization', label: '論理構成と裏づけ', weight: 30, hint: '主張→理由→具体例の流れと、接続表現によるつながり' },
+      { key: 'grammar',      label: '文法・語法',     weight: 25, hint: '正確さ。TOEFL同様、意味を妨げない軽微な誤りは許容' },
+      { key: 'lexis',        label: '語彙と構文の幅', weight: 20, hint: '同じ語や単調な文型の繰り返しを避けられているか' }
+    ],
+    3: [
+      { key: 'organization', label: 'トーンとレジスター', weight: 30, hint: '相手と場面に合った丁寧さを最後まで一貫させているか' },
+      { key: 'lexis',        label: '語彙・自然さ',     weight: 25, hint: 'ネイティブが実際に選ぶ語を選べているか' },
+      { key: 'task',         label: '簡潔さと洗練',     weight: 25, hint: '冗長さを削り、同じ意味をより短く強く言えているか' },
+      { key: 'grammar',      label: '文法・語法',       weight: 20, hint: '正確さと構文の適切さ' }
+    ]
+  };
+  function rubricFor(ph) { return RUBRICS[ph] || RUBRICS[1]; }
 
-  function bandsToScore(c) {
+  function bandsToScore(c, ph) {
     if (!c) return null;
     var sum = 0, ok = true;
-    RUBRIC.forEach(function (r) {
-      var b = c[r.key] && typeof c[r.key].band !== 'undefined' ? Number(c[r.key].band) : NaN;
+    rubricFor(ph).forEach(function (r) {
+      var v = c[r.key];
+      // AI採点は {band: n}、簡易採点は数値をそのまま渡す
+      var b = (v && typeof v === 'object') ? Number(v.band) : Number(v);
       if (isNaN(b)) { ok = false; return; }
       sum += Math.max(0, Math.min(5, b)) * r.weight;
     });
@@ -972,12 +1350,10 @@
       '【この問題で身につけたいキー表現】\n' + keys.join('\n') + '\n\n' +
       '【想定される長さ】' + range[0] + '〜' + range[1] + ' words\n\n' +
       '【学習者の解答】\n' + (item.answer || '（未解答）') + '\n\n' +
+      '【学習段階】Phase ' + state.phase + '（' + PHASES[state.phase - 1].name + '） 単元: ' + unitName(q.cat) + '\n\n' +
       '【採点方針】\n' +
       'TOEFLライティングの採点基準に準じます。次の4観点をそれぞれ0〜5のバンドで評価してください。\n' +
-      '- task（課題達成）: 求められた要件をすべて満たし、具体的に述べられているか\n' +
-      '- grammar（文法・語法）: 時制、語法、冠詞、前置詞などの正確さ\n' +
-      '- lexis（語彙・自然さ）: 日本語からの直訳を脱し、場面にふさわしい自然な表現が使えているか\n' +
-      '- organization（構成・トーン）: 流れの分かりやすさと、相手・場面に合った丁寧さ（レジスター）\n\n' +
+      rubricFor(state.phase).map(function (r) { return '- ' + r.key + '（' + r.label + '）: ' + r.hint; }).join('\n') + '\n\n' +
       '【バンドの目安】\n' +
       '5 = ほぼ完全。誤りがあってもごく些細で、理解を妨げない\n' +
       '4 = 良好。軽微な誤りはあるが、意図は明確に伝わる\n' +
@@ -991,10 +1367,7 @@
       '次のJSON形式で返してください。説明文は日本語、英文は英語で書いてください。\n' +
       '{\n' +
       '  "criteria": {\n' +
-      '    "task":         {"band": 0-5の数値, "comment": "日本語で1文"},\n' +
-      '    "grammar":      {"band": 0-5の数値, "comment": "日本語で1文"},\n' +
-      '    "lexis":        {"band": 0-5の数値, "comment": "日本語で1文"},\n' +
-      '    "organization": {"band": 0-5の数値, "comment": "日本語で1文"}\n' +
+      rubricFor(state.phase).map(function (r) { return '    "' + r.key + '": {"band": 0-5の数値, "comment": "日本語で1文"}'; }).join(',\n') + '\n' +
       '  },\n' +
       '  "summary": "全体講評を日本語で1〜2文",\n' +
       '  "corrected": "学習者の意図を保ったまま自然な英語に書き直した全文",\n' +
@@ -1002,6 +1375,7 @@
       '  "good": ["よくできている点を日本語で。最大3件"],\n' +
       '  "vocab": [{"p": "この解答から学ぶべき英語表現", "m": "日本語の意味"}]\n' +
       '}\n' +
+      'vocab では、使い方が同じ表現を書き分けないでください（例: 「end up -ing」と「end up doing」は同一なので1件にまとめる）。\n' +
       'issues は最大5件、vocab は最大4件。解答が未記入や的外れな場合も、バンドは正直に付けてください。';
   }
 
@@ -1057,9 +1431,10 @@
           throw e3;
         }
         var crit = j.criteria || null;
-        var fromBands = bandsToScore(crit);
+        var fromBands = bandsToScore(crit, state.phase);
         return {
           criteria: crit,
+          phase: state.phase,
           // 総合点はバンドから自前で計算する（モデルごとの点数の揺れを避けるため）
           score: fromBands !== null ? fromBands : Math.max(0, Math.min(100, Math.round(Number(j.score) || 0))),
           summary: String(j.summary || ''),
@@ -1171,7 +1546,12 @@
   function mergeState(local, remote) {
     if (!remote || typeof remote !== 'object') return local;
     var out = { bank: [], sessions: {}, phase: Math.max(local.phase || 1, remote.phase || 1), filter: local.filter || 'all',
-                gen: { free: [], translate: [] } };
+                gen: { free: [], translate: [] }, drills: {} };
+
+    // 復習カードは両端末分をそのまま統合
+    [remote.drills || {}, local.drills || {}].forEach(function (src) {
+      Object.keys(src).forEach(function (k) { out.drills[k] = src[k]; });
+    });
 
     // 生成済み問題は id で重複を除いて統合
     ['free', 'translate'].forEach(function (kind) {
@@ -1246,7 +1626,7 @@
   }
 
   function payload() {
-    return JSON.stringify({ bank: state.bank, sessions: state.sessions, phase: state.phase, gen: state.gen, v: 3 });
+    return JSON.stringify({ bank: state.bank, sessions: state.sessions, phase: state.phase, gen: state.gen, drills: state.drills, v: 3 });
   }
 
   function syncNow(silent) {
@@ -1347,8 +1727,9 @@
 
   function remainingCounts() {
     var used = usedIds();
-    var f = freePool().filter(function (q) { return !used[q.id]; }).length;
-    var t = trPool().filter(function (q) { return !used[q.id]; }).length;
+    var inPhase = function (q) { return unitPhase(q.cat) === state.phase && !used[q.id]; };
+    var f = freePool().filter(inPhase).length;
+    var t = trPool().filter(inPhase).length;
     return { free: f, translate: t, sets: Math.min(f, Math.floor(t / 2)) };
   }
 
@@ -1430,7 +1811,7 @@
   // 補充が必要な単元を選ぶ: 未出題が最も少ない単元
   function unitNeedingQuestions() {
     var m = unitStats();
-    var list = UNITS.map(function (u) { return m[u.id]; }).sort(function (a, b) {
+    var list = unitsOfPhase(state.phase).map(function (u) { return m[u.id]; }).sort(function (a, b) {
       if (a.unused !== b.unused) return a.unused - b.unused;
       var aa = a.avg === null ? 101 : a.avg, bb = b.avg === null ? 101 : b.avg;
       return aa - bb;
@@ -1471,6 +1852,8 @@
 
   // 残りが2セット分を切ったら、裏で1回だけ補充する
   function topUpIfLow() {
+    if (personalizedOn()) return;          // 毎回生成するので事前補充は不要
+    if (qMode() === 'pool') return;
     if (!autoGenOn() || !getKey() || generating) return;
     if (remainingCounts().sets > 2) return;
     generateQuestions().then(function () {
@@ -1482,6 +1865,26 @@
     var el = $('#gen-status'); if (!el) return;
     var r = remainingCounts();
     var genN = (state.gen.free.length + state.gen.translate.length);
+    var sel = $('#q-mode');
+    if (sel) sel.value = qMode();
+    var note = $('#q-mode-note');
+    if (note) {
+      note.innerHTML = qMode() === 'always'
+        ? (getKey()
+            ? 'これまでの弱点・未定着の表現・重点単元をもとに、毎回3問を作ります。<strong class="text-slate-700">1セットあたり約2.5円</strong>（採点と合わせて約5円）。'
+            : '<strong class="text-rose-600">APIキーが未登録のため、収録問題で動作します。</strong>')
+        : qMode() === 'pool'
+          ? '収録問題だけを使います。API費用はかかりませんが、収録分（現フェーズ）を使い切ると同じ問題が再登場します。'
+          : '収録問題を優先し、残りが2セットを切ったときだけまとめて補充します。費用を抑えたい場合はこちら。';
+    }
+    if (qMode() === 'always') {
+      el.innerHTML = '毎回あなた専用の問題を生成するモードです。収録問題の残数は使用しません。' +
+        '<br>次の重点単元: <strong class="text-slate-800">' + esc((unitPriority()[0] || { name: '—' }).name) + '</strong>' +
+        '<br>重点的に狙う表現: <strong class="text-slate-800">' +
+        (weakVocab(3).map(function (b) { return esc(b.phrase); }).join(' / ') || 'まだ蓄積がありません') + '</strong>';
+      var t2 = $('#gen-toggle'); if (t2) t2.checked = autoGenOn();
+      return;
+    }
     var nu = unitNeedingQuestions();
     el.innerHTML = '未出題の残り: <strong class="' + (r.sets <= 2 ? 'text-amber-600' : 'text-slate-800') + '">約' + r.sets + 'セット</strong>' +
       '（自由英作文 ' + r.free + '問 / 和文英訳 ' + r.translate + '問）' +
@@ -1492,7 +1895,8 @@
 
 
   /* ============ 単元カバレッジ ============ */
-  function unitStats() {
+  function unitStats(ph) {
+    ph = ph || state.phase;
     var used = usedIds();
     var graded = {};
     Object.keys(state.sessions).forEach(function (d) {
@@ -1504,11 +1908,13 @@
 
     var all = freePool().concat(trPool());
     var map = {};
-    UNITS.forEach(function (u) { map[u.id] = { id: u.id, name: u.name, desc: u.desc, total: 0, done: 0, unused: 0, scores: [] }; });
+    unitsOfPhase(ph).forEach(function (u) {
+      map[u.id] = { id: u.id, name: u.name, desc: u.desc, total: 0, done: 0, unused: 0, scores: [] };
+    });
 
     all.forEach(function (q) {
-      var c = map[q.cat] || map['idiom'];
-      if (!c) return;
+      var c = map[q.cat];
+      if (!c) return;                       // 他フェーズの単元は集計しない
       c.total++;
       if (used[q.id]) {
         c.done++;
@@ -1518,24 +1924,61 @@
       }
     });
 
-    UNITS.forEach(function (u) {
-      var c = map[u.id];
+    var P = PHASES[ph - 1];
+    Object.keys(map).forEach(function (k) {
+      var c = map[k];
+      c.answered = c.scores.length;
       c.avg = c.scores.length ? Math.round(c.scores.reduce(function (a, b) { return a + b; }, 0) / c.scores.length) : null;
+      c.passed = c.answered >= P.unitMin && c.avg !== null && c.avg >= P.unitAvg;
     });
     return map;
   }
 
-  // 未習が多い単元を優先し、同程度なら平均点の低い単元を先に出す
+  function unitSummary(ph) {
+    ph = ph || state.phase;
+    var m = unitStats(ph), list = unitsOfPhase(ph).map(function (u) { return m[u.id]; });
+    return {
+      list: list,
+      passed: list.filter(function (c) { return c.passed; }).length,
+      total: list.length,
+      untouched: list.filter(function (c) { return c.answered === 0; }).length
+    };
+  }
+
+  // 序盤は「未習の単元」を、フェーズ完成が近づいたら「未合格の単元」を優先する
+  function priorityMode() {
+    var sum = unitSummary();
+    if (sum.untouched > 0) return 'coverage';                 // まだ手つかずの単元がある
+    if (sum.passed >= sum.total) return 'coverage';           // 全単元合格済み → 網羅に戻す
+    return 'weakness';                                        // 一周した → 弱点の穴埋め
+  }
+
   function unitPriority() {
     var m = unitStats();
-    return UNITS.map(function (u) { return m[u.id]; })
-      .filter(function (c) { return c.unused > 0; })
-      .sort(function (a, b) {
-        if (a.done !== b.done) return a.done - b.done;               // 手つかずの単元が先
-        var aa = a.avg === null ? 101 : a.avg, bb = b.avg === null ? 101 : b.avg;
-        if (aa !== bb) return aa - bb;                                 // 弱い単元が先
-        return b.unused - a.unused;
+    var mode = priorityMode();
+    var list = unitsOfPhase(state.phase).map(function (u) { return m[u.id]; })
+      .filter(function (c) { return c.unused > 0; });
+
+    if (mode === 'weakness') {
+      return list.sort(function (a, b) {
+        // 未合格を先に
+        if (a.passed !== b.passed) return a.passed ? 1 : -1;
+        // 解答数が最低ラインに満たない単元を先に
+        var P = PHASES[state.phase - 1];
+        var la = a.answered < P.unitMin ? 0 : 1, lb = b.answered < P.unitMin ? 0 : 1;
+        if (la !== lb) return la - lb;
+        // 平均点の低い単元を先に
+        var aa = a.avg === null ? -1 : a.avg, bb = b.avg === null ? -1 : b.avg;
+        return aa - bb;
       });
+    }
+
+    return list.sort(function (a, b) {
+      if (a.done !== b.done) return a.done - b.done;
+      var aa = a.avg === null ? 101 : a.avg, bb = b.avg === null ? 101 : b.avg;
+      if (aa !== bb) return aa - bb;
+      return b.unused - a.unused;
+    });
   }
 
   // 指定単元の未出題問題を取り出す。無ければ単元を問わず未出題から。
@@ -1548,6 +1991,133 @@
     var rest = pool.filter(function (q) { return !used[q.id]; });
     if (rest.length) return rest[0];
     return pool[0];
+  }
+
+
+  /* ============ 出題方式 ============ */
+  var QMODE_STORE = 'engiflow:qmode';
+  // pool   : 収録問題だけを使う（API不要）
+  // auto   : 収録問題を使い、尽きそうなら補充生成（既定）
+  // always : 毎回あなた専用の問題を生成する
+  function qMode() {
+    try { return localStorage.getItem(QMODE_STORE) || 'auto'; } catch (e) { return 'auto'; }
+  }
+  function setQMode(v) { try { localStorage.setItem(QMODE_STORE, v); } catch (e) { } }
+  function personalizedOn() { return qMode() === 'always' && !!getKey(); }
+
+  /* ---- 出題の材料になる学習履歴 ---- */
+
+  // まだ定着していない表現（使えなかった回数が多い順）
+  function weakVocab(n) {
+    return sortedBank()
+      .filter(function (b) { return b.category !== 'mastered'; })
+      .slice(0, n || 8);
+  }
+
+  // 直近の添削で繰り返し指摘されている点
+  function recentIssueNotes(n) {
+    var out = [];
+    Object.keys(state.sessions).sort().reverse().forEach(function (d) {
+      state.sessions[d].items.slice().reverse().forEach(function (it) {
+        if (out.length >= (n || 6)) return;
+        if (it.ai && it.ai.issues) {
+          it.ai.issues.forEach(function (is) {
+            if (out.length >= (n || 6)) return;
+            if (is && is.reason) out.push(is.reason);
+          });
+        }
+      });
+    });
+    return out;
+  }
+
+  // 直近に出した題材（重複を避けるため）
+  function recentTopics(n) {
+    var out = [];
+    Object.keys(state.sessions).sort().reverse().forEach(function (d) {
+      state.sessions[d].items.slice().reverse().forEach(function (it) {
+        if (out.length >= (n || 12)) return;
+        var q = questionOf(it);
+        if (q) out.push(q.jp || q.title);
+      });
+    });
+    return out;
+  }
+
+  function buildPersonalPrompt(unit) {
+    var P = PHASES[state.phase - 1];
+    var vocab = weakVocab(8);
+    var issues = recentIssueNotes(6);
+    var topics = recentTopics(12);
+    var m = unitStats()[unit.id] || {};
+
+    var vocabTxt = vocab.length
+      ? vocab.map(function (b) {
+          return '- ' + b.phrase + '（' + (b.meaning || '') + '）… これまで ' + (b.misses || 0) + ' 回使えていない';
+        }).join('\n')
+      : '（まだ蓄積がありません）';
+
+    return '日本人学習者ひとりのために、本日の練習問題を作ってください。過去の学習記録にもとづく個別出題です。\n\n' +
+      '【学習段階】Phase ' + state.phase + '（' + P.name + '）\n' +
+      '【今回の重点単元】' + unit.name + '\n' +
+      '【この単元のねらい】' + unit.desc + '\n' +
+      '【この単元の現状】解答 ' + (m.answered || 0) + ' 問 / 平均 ' + (m.avg === null || m.avg === undefined ? '未着手' : m.avg + '点') +
+        '（合格ライン ' + P.unitAvg + '点）\n\n' +
+      '【まだ定着していない表現】これらのうち2〜3個を、自然な形で解答に使わざるを得ない設定にしてください。\n' + vocabTxt + '\n\n' +
+      '【直近の添削で指摘された点】同じ弱点をもう一度練習できる設定にしてください。\n' +
+      (issues.length ? issues.map(function (t) { return '- ' + t; }).join('\n') : '（まだ蓄積がありません）') + '\n\n' +
+      '【最近出した題材】重複を避けてください。\n' + (topics.length ? topics.join(' / ') : '（なし）') + '\n\n' +
+      '【作るもの】自由英作文1問と和文英訳2問。長さ len は short / medium / long から散らしてください。\n\n' +
+      '次のJSON形式で返してください。\n' +
+      '{\n' +
+      '  "free": [{\n' +
+      '    "len": "short|medium|long", "genre": "場面の種類（日本語）", "title": "課題文（日本語1文）",\n' +
+      '    "reqs": [{"text": "伝えるべき要件（日本語）", "keys": [["狙いの英語表現", "言い換え1", "言い換え2"]]}],\n' +
+      '    "casual": "友人向けの自然な模範解答（英語）",\n' +
+      '    "formal": "丁寧な場面での模範解答（英語）",\n' +
+      '    "vocab": [{"p": "覚えるべき表現（英語）", "m": "日本語の意味"}]\n' +
+      '  }],\n' +
+      '  "translate": [{\n' +
+      '    "len": "short|medium|long", "jp": "出題する日本語",\n' +
+      '    "en": "模範解答（英語）",\n' +
+      '    "keys": [["狙いの英語表現", "言い換え1", "言い換え2"]],\n' +
+      '    "tip": "直訳するとどう間違えやすいかの解説（日本語1文）",\n' +
+      '    "vocab": [{"p": "覚えるべき表現（英語）", "m": "日本語の意味"}]\n' +
+      '  }]\n' +
+      '}\n' +
+      'free は必ず1問、translate は必ず2問。keys には自然な言い換えを2〜3個含めてください。\n' +
+      'vocab では、使い方が同じ表現を書き分けないでください（例: 「end up -ing」と「end up doing」は同一なので1件にまとめる）。';
+  }
+
+  // 1回のAPI呼び出しで、その人向けの3問を作る
+  function generatePersonalSet() {
+    var unit = (unitPriority()[0] || unitsOfPhase(state.phase)[0] || UNITS[0]);
+    if (UNIT_BY_ID[unit.id]) unit = UNIT_BY_ID[unit.id];
+    return fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json', 'x-api-key': getKey(),
+        'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: getModel(), max_tokens: 4000, system: GEN_SYSTEM,
+        messages: [{ role: 'user', content: buildPersonalPrompt(unit) }]
+      })
+    }).then(function (res) {
+      return res.json().then(function (data) {
+        if (!res.ok) throw new Error((data && data.error && data.error.message) || ('HTTP ' + res.status));
+        if (data.stop_reason === 'max_tokens') throw new Error('生成結果が途中で切れました。');
+        var text = (data.content || []).map(function (c) { return c.type === 'text' ? c.text : ''; }).join('');
+        var out = normalizeGenerated(parseAiJson(text), unit.id);
+        if (!out.free.length || out.translate.length < 2) throw new Error('生成された問題数が足りませんでした。');
+        out.free = out.free.slice(0, 1);
+        out.translate = out.translate.slice(0, 2);
+        state.gen.free = state.gen.free.concat(out.free);
+        state.gen.translate = state.gen.translate.concat(out.translate);
+        save();
+        return out;
+      });
+    });
   }
 
   /* ============ 進捗・フェーズ ============ */
@@ -1571,8 +2141,8 @@
   }
   function canAdvance() {
     if (state.phase >= PHASES.length) return false;
-    var s = phaseStats();
-    return s.count >= s.need && s.avg >= s.needAvg;
+    var s = phaseStats(), u = unitSummary();
+    return s.count >= s.need && s.avg >= s.needAvg && u.passed >= u.total && u.total > 0;
   }
   function streak() {
     var d = new Date(), c = 0;
@@ -1589,40 +2159,135 @@
   }
 
 
+
+  // 「get the hang of」に対して「got the hang of」も正解にするための語形展開
+  var IRREGULAR = {
+    be:['is','am','are','was','were','been','being'], do:['does','did','done','doing'],
+    get:['got','gotten','gets','getting'], have:['has','had','having'], go:['goes','went','gone','going'],
+    come:['comes','came','coming'], take:['takes','took','taken','taking'], make:['makes','made','making'],
+    give:['gives','gave','given','giving'], keep:['keeps','kept','keeping'], hold:['holds','held','holding'],
+    send:['sends','sent','sending'], find:['finds','found','finding'], feel:['feels','felt','feeling'],
+    sleep:['sleeps','slept','sleeping'], pay:['pays','paid','paying'], say:['says','said','saying'],
+    tell:['tells','told','telling'], think:['thinks','thought','thinking'], bring:['brings','brought','bringing'],
+    deal:['deals','dealt','dealing'], meet:['meets','met','meeting'], sit:['sits','sat','sitting'],
+    stand:['stands','stood','standing'], understand:['understands','understood','understanding'],
+    blow:['blows','blew','blown','blowing'], run:['runs','ran','running'], put:['puts','putting'],
+    let:['lets','letting'], cut:['cuts','cutting'], split:['splits','splitting'], hit:['hits','hitting'],
+    leave:['leaves','left','leaving'], lose:['loses','lost','losing'], win:['wins','won','winning'],
+    speak:['speaks','spoke','spoken','speaking'], write:['writes','wrote','written','writing'],
+    drive:['drives','drove','driven','driving'], eat:['eats','ate','eaten','eating'],
+    swing:['swings','swung','swinging'], stick:['sticks','stuck','sticking'], hang:['hangs','hung','hanging']
+  };
+
+  function inflect(w) {
+    var out = [w], i;
+    if (IRREGULAR[w]) { for (i = 0; i < IRREGULAR[w].length; i++) out.push(IRREGULAR[w][i]); return out; }
+    if (/e$/.test(w)) { out.push(w + 'd', w + 's', w.slice(0, -1) + 'ing'); }
+    else if (/[^aeiou]y$/.test(w)) { out.push(w.slice(0, -1) + 'ied', w.slice(0, -1) + 'ies', w + 'ing'); }
+    else if (/(s|x|z|ch|sh)$/.test(w)) { out.push(w + 'ed', w + 'es', w + 'ing'); }
+    else if (/^[a-z]{2,4}$/.test(w) && /[^aeiou][aeiou][^aeiouwyx]$/.test(w)) {
+      var dbl = w + w.slice(-1);
+      out.push(w + 'ed', w + 's', w + 'ing', dbl + 'ed', dbl + 'ing');
+    } else { out.push(w + 'ed', w + 's', w + 'ing'); }
+    return out;
+  }
+
+  // 先頭語の語形違いを許した候補リストに広げる
+  function expandAlts(alts) {
+    var out = [];
+    (alts || []).forEach(function (a) {
+      var t = String(a).trim();
+      if (!t) return;
+      out.push(t);
+      var parts = t.split(/\s+/);
+      if (parts.length < 2) return;
+      inflect(parts[0].toLowerCase()).forEach(function (f) {
+        out.push([f].concat(parts.slice(1)).join(' '));
+      });
+    });
+    return out;
+  }
+
+  function hasAnyLoose(norm, alts) { return hasAny(norm, expandAlts(alts)); }
+
   /* ============ 表現バンクの正規化・重複統合 ============ */
-  function bankKey(phrase) {
+  // 文法上のプレースホルダ。「end up -ing」と「end up doing」を同じ表現とみなすために落とす。
+  var PLACEHOLDERS = {
+    'ing': 1, 'doing': 1, 'do': 1, 'done': 1, 'sth': 1, 'something': 1, 'sb': 1,
+    'someone': 1, 'somebody': 1, 'somewhere': 1, 'oneself': 1, 'ones': 1, 'one': 1,
+    'v': 1, 'n': 1, 'x': 1, 'y': 1, 'a1': 1, 'etc': 1, 'date': 1, 'time': 1, 'place': 1
+  };
+  // 人称の違いは表現としては同じ（let me know / let you know）
+  var PRONOUNS = {
+    'me': 1, 'you': 1, 'him': 1, 'her': 1, 'us': 1, 'them': 1, 'it': 1,
+    'my': 1, 'your': 1, 'his': 1, 'their': 1, 'our': 1, 'its': 1,
+    'myself': 1, 'yourself': 1, 'himself': 1, 'herself': 1, 'ourselves': 1, 'themselves': 1
+  };
+
+  function bankTokens(phrase) {
     var p = String(phrase || '').toLowerCase()
       .replace(/[\u2018\u2019]/g, "'")
-      .split('/')[0]                       // 「stop by / swing by」→「stop by」
-      .replace(/\[[^\]]*\]/g, ' ')          // 「reply to me by [date]」→「reply to me by」
-      .replace(/\([^)]*\)/g, ' ')
-      .replace(/[^a-z0-9'\s]/g, ' ')
+      .split('/')[0]                        // 「stop by / swing by」→「stop by」
+      .replace(/\[[^\]]*\]/g, ' ')           // 「reply to me by [date]」→「reply to me by」
+      .replace(/\([^)]*\)/g, ' ')            // 括弧内の補足を落とす
+      .replace(/[^a-z0-9'\s]/g, ' ')         // ハイフンや〜を空白に
       .replace(/\s+/g, ' ').trim();
-    return p.replace(/^to\s+/, '');
+
+    var raw = p ? p.split(' ') : [];
+    var out = [];
+    raw.forEach(function (w, i) {
+      if (!w) return;
+      if (i === 0 && w === 'to') return;                        // 不定詞の to を落とす
+      if (i > 0 && PLACEHOLDERS[w]) return;                     // 先頭以外のプレースホルダを落とす
+      out.push(PRONOUNS[w] ? '_' : w);                          // 人称は共通化する
+    });
+    return out;
+  }
+
+  function bankKey(phrase) { return bankTokens(phrase).join(' '); }
+
+  // 一方が他方の先頭部分と一致するなら同じ表現とみなす
+  // （「get back to」と「get back to you」など。取り違えを避けるため3語以上に限定）
+  function sameExpression(a, b) {
+    if (!a.length || !b.length) return false;
+    var sh = a.length <= b.length ? a : b;
+    var lo = a.length <= b.length ? b : a;
+    if (sh.length < 3) return sh.join(' ') === lo.join(' ');
+    for (var i = 0; i < sh.length; i++) { if (sh[i] !== lo[i]) return false; }
+    return true;
   }
 
   // 同じ表現が別IDで増えないよう、キー単位で1件にまとめる
+  function absorbInto(cur, b) {
+    cur.misses = (cur.misses || 0) + (b.misses || 0);
+    cur.streak = Math.max(cur.streak || 0, b.streak || 0);
+    cur.dc = Math.max(cur.dc || 0, b.dc || 0);
+    if ((b.u || 0) > (cur.u || 0)) { cur.category = b.category; cur.next = b.next; cur.u = b.u; }
+    // 表記は「言い換えを多く含むもの」を優先し、同程度なら短い方（プレースホルダの少ない方）を残す
+    var na = String(cur.phrase).split('/').length, nb = String(b.phrase).split('/').length;
+    if (nb > na || (nb === na && String(b.phrase).length < String(cur.phrase).length)) cur.phrase = b.phrase;
+    if (!cur.meaning && b.meaning) cur.meaning = b.meaning;
+  }
+
   function dedupeBank() {
-    var map = {}, order = [];
+    var kept = [];
     (state.bank || []).forEach(function (b) {
       if (!b || !b.phrase) return;
-      var k = bankKey(b.phrase) || String(b.phrase).toLowerCase();
-      var cur = map[k];
-      if (!cur) { b.key = k; map[k] = b; order.push(k); return; }
-      // 統合: 誤答回数は合算、分類は新しい方、表記は情報量の多い方を残す
-      cur.misses = (cur.misses || 0) + (b.misses || 0);
-      cur.streak = Math.max(cur.streak || 0, b.streak || 0);
-      if ((b.u || 0) > (cur.u || 0)) { cur.category = b.category; cur.next = b.next; cur.u = b.u; }
-      if (String(b.phrase).length > String(cur.phrase).length) cur.phrase = b.phrase;
-      if (!cur.meaning && b.meaning) cur.meaning = b.meaning;
+      var toks = bankTokens(b.phrase);
+      if (!toks.length) toks = [String(b.phrase).toLowerCase()];
+      for (var i = 0; i < kept.length; i++) {
+        if (sameExpression(kept[i].toks, toks)) { absorbInto(kept[i].b, b); return; }
+      }
+      b.key = toks.join(' ');
+      kept.push({ toks: toks, b: b });
     });
-    state.bank = order.map(function (k) { return map[k]; });
+    state.bank = kept.map(function (x) { x.b.key = x.toks.join(' '); return x.b; });
   }
 
   function findBank(phrase) {
-    var k = bankKey(phrase);
+    var toks = bankTokens(phrase);
     for (var i = 0; i < state.bank.length; i++) {
-      if ((state.bank[i].key || bankKey(state.bank[i].phrase)) === k) return state.bank[i];
+      if (sameExpression(bankTokens(state.bank[i].phrase), toks)) return state.bank[i];
     }
     return null;
   }
@@ -1636,7 +2301,7 @@
       var b = findBank(v.p);
       if (!b) return;
       var alts = String(v.p).split('/').map(function (x) { return x.trim(); }).filter(Boolean);
-      if (!hasAny(norm, alts)) {
+      if (!hasAnyLoose(norm, alts)) {
         b.misses = (b.misses || 0) + 1;
         b.u = Date.now();
       } else {
@@ -1682,6 +2347,7 @@
   function renderRoadmap() {
     var box = $('#roadmap-list');
     var s = phaseStats();
+    var us = unitSummary();
     box.innerHTML = PHASES.map(function (p) {
       var isNow = p.id === state.phase, isDone = p.id < state.phase;
       var badge = isDone ? '<span class="shrink-0 px-2.5 py-1 rounded-md text-xs font-bold bg-emerald-100 text-emerald-700">Cleared</span>'
@@ -1693,6 +2359,7 @@
         bar = '<div class="mt-3 space-y-1.5">' +
               '<div class="h-2 rounded-full bg-slate-100 overflow-hidden"><div class="h-full bg-indigo-500" style="width:' + pc + '%"></div></div>' +
               '<div class="text-xs text-slate-500">解答 <strong class="text-slate-800">' + s.count + ' / ' + s.need + '</strong> 問 ・ 直近平均 <strong class="' + (s.avg >= s.needAvg ? 'text-emerald-600' : 'text-slate-800') + '">' + (s.count ? s.avg : '–') + '</strong> 点（必要 ' + s.needAvg + '点）</div>' +
+              '<div class="text-xs text-slate-500">合格した単元 <strong class="' + (us.passed >= us.total ? 'text-emerald-600' : 'text-slate-800') + '">' + us.passed + ' / ' + us.total + '</strong>（単元ごとに ' + PHASES[state.phase - 1].unitMin + '問以上・平均' + PHASES[state.phase - 1].unitAvg + '点以上）</div>' +
               (s.simple ? '<div class="text-xs text-amber-600">うち ' + s.simple + ' 問は簡易採点です（文法・自然さ未判定のため参考値）</div>' : '') +
               '</div>';
       }
@@ -1706,7 +2373,7 @@
     var panel = $('#unlock-panel');
     if (canAdvance()) {
       panel.classList.remove('hidden');
-      $('#unlock-detail').textContent = '解答 ' + s.count + '問・直近平均 ' + s.avg + '点（条件: ' + s.need + '問 / ' + s.needAvg + '点）';
+      $('#unlock-detail').textContent = '解答 ' + s.count + '問・直近平均 ' + s.avg + '点・全' + us.total + '単元が合格';
     } else {
       panel.classList.add('hidden');
     }
@@ -1719,12 +2386,22 @@
     $('#stat-total').textContent = graded.length;
     $('#stat-avg').textContent = recent.length ? Math.round(recent.reduce(function (a, b) { return a + b.item.score; }, 0) / recent.length) : '–';
     $('#stat-streak').textContent = streak();
-    $('#stat-recall').textContent = state.bank.filter(function (b) { return b.category === 'recall'; }).length;
+    $('#stat-recall').textContent = drillQueue().length;
+    $('#drill-count-badge').textContent = drillQueue().length;
     renderUnits();
+    var hm = $('#hero-mode');
+    if (hm) {
+      hm.innerHTML = personalizedOn()
+        ? 'これまでの弱点と<strong class="text-indigo-700">まだ定着していない表現</strong>をもとに、毎回あなた専用の3問を出題します。'
+        : '本日は<strong class="text-indigo-700">自由英作文1問＋和文英訳2問</strong>。重点単元から選ばれます。';
+    }
 
     var sess = state.sessions[TODAY];
     var done = sess && sess.items.every(function (it) { return typeof it.score === 'number'; });
-    $('#start-label').textContent = done ? '追加の3問に挑戦する' : (sess && sess.items.some(function (it) { return it.answer; }) ? '解答を再開する' : '本日のタスクを開始する');
+    var pending = sess ? pendingItems(sess).length : 0;
+    $('#start-label').textContent = pending
+      ? '解答を再開する'
+      : (personalizedOn() ? 'あなた専用の3問を作る' : (sess ? '追加の3問に挑戦する' : '本日のタスクを開始する'));
     $('#plan-status').textContent = 'Phase ' + state.phase + ' 進行中 ・ ' + jpDate(TODAY);
     renderRoadmap();
   }
@@ -1733,20 +2410,35 @@
     var box = $('#unit-list'); if (!box) return;
     var m = unitStats();
     var next = unitPriority()[0];
-    box.innerHTML = UNITS.map(function (u) {
+    var P = PHASES[state.phase - 1];
+    var lbl = $('#unit-phase-label');
+    if (lbl) lbl.textContent = 'Phase ' + state.phase;
+    var mode = priorityMode();
+    var modeEl = $('#unit-mode');
+    if (modeEl) {
+      modeEl.innerHTML = mode === 'weakness'
+        ? '<span class="text-amber-700 font-bold">仕上げ段階</span>：未合格の単元を優先して出題しています。'
+        : '未習の単元から順に出題しています。全単元に触れたあとは、未合格の単元を優先します。';
+    }
+
+    box.innerHTML = unitsOfPhase(state.phase).map(function (u) {
       var c = m[u.id];
       var pc = c.total ? Math.round(c.done / c.total * 100) : 0;
       var isNext = next && next.id === u.id;
-      var col = c.avg === null ? 'bg-slate-300' : c.avg >= 80 ? 'bg-emerald-500' : c.avg >= 60 ? 'bg-amber-500' : 'bg-rose-500';
-      return '<div class="rounded-xl border p-4 ' + (isNext ? 'border-indigo-300 bg-indigo-50/60' : 'border-slate-200 bg-white') + '">' +
+      var col = c.avg === null ? 'bg-slate-300' : c.avg >= P.unitAvg ? 'bg-emerald-500' : c.avg >= P.unitAvg - 15 ? 'bg-amber-500' : 'bg-rose-500';
+      var badge = c.passed
+        ? '<span class="shrink-0 text-[11px] font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-700">合格</span>'
+        : isNext ? '<span class="shrink-0 text-[11px] font-bold px-2 py-0.5 rounded bg-indigo-600 text-white">次に出題</span>'
+        : c.answered && c.answered < P.unitMin ? '<span class="shrink-0 text-[11px] font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-500">あと' + (P.unitMin - c.answered) + '問</span>'
+        : '';
+      return '<div class="rounded-xl border p-4 ' + (c.passed ? 'border-emerald-200 bg-emerald-50/40' : isNext ? 'border-indigo-300 bg-indigo-50/60' : 'border-slate-200 bg-white') + '">' +
         '<div class="flex items-start justify-between gap-2">' +
         '<div><div class="font-bold text-slate-900 text-sm">' + esc(u.name) + '</div>' +
-        '<div class="text-xs text-slate-500 mt-0.5">' + esc(u.desc) + '</div></div>' +
-        (isNext ? '<span class="shrink-0 text-[11px] font-bold px-2 py-0.5 rounded bg-indigo-600 text-white">次に出題</span>' : '') + '</div>' +
+        '<div class="text-xs text-slate-500 mt-0.5">' + esc(u.desc) + '</div></div>' + badge + '</div>' +
         '<div class="mt-3 h-2 rounded-full bg-slate-100 overflow-hidden"><div class="h-full ' + col + '" style="width:' + pc + '%"></div></div>' +
         '<div class="mt-1.5 flex items-center justify-between text-xs text-slate-500">' +
-        '<span>' + c.done + ' / ' + c.total + ' 問 学習済み</span>' +
-        '<span>' + (c.avg === null ? '未着手' : '平均 <strong class="' + scoreColor(c.avg) + '">' + c.avg + '</strong> 点') + '</span></div></div>';
+        '<span>解答 ' + c.answered + ' 問 / 収録 ' + c.total + ' 問</span>' +
+        '<span>' + (c.avg === null ? '未着手' : '平均 <strong class="' + scoreColor(c.avg) + '">' + c.avg + '</strong> 点（合格 ' + P.unitAvg + '）') + '</span></div></div>';
     }).join('');
   }
 
@@ -1770,6 +2462,37 @@
     var r = 0;
     sess.items.forEach(function (it) { if (typeof it.score === 'number' && (it.round || 1) > r) r = it.round || 1; });
     return r;
+  }
+
+
+  // 出題セットを用意する。個別生成モードなら生成し、失敗したら収録問題に戻る。
+  function prepareRound(dateKey, round) {
+    if (!personalizedOn()) return Promise.resolve(buildRound(dateKey, round));
+    return generatePersonalSet().then(function (out) {
+      return [
+        { qid: out.free[0].id,      type: 'free',      answer: '', score: null, round: round, made: 1 },
+        { qid: out.translate[0].id, type: 'translate', answer: '', score: null, round: round, made: 1 },
+        { qid: out.translate[1].id, type: 'translate', answer: '', score: null, round: round, made: 1 }
+      ];
+    }).catch(function (err) {
+      console.warn('個別生成に失敗したため収録問題を使います', err);
+      lastGenError = (err && err.message) ? err.message : String(err);
+      return buildRound(dateKey, round);
+    });
+  }
+
+  var lastGenError = '';
+
+  function showPreparing(on) {
+    var box = $('#question-list');
+    if (!box) return;
+    if (on) {
+      box.innerHTML = '<div class="bg-white border border-slate-200 rounded-2xl p-10 text-center space-y-3 shadow-sm">' +
+        '<i class="ph-bold ph-spinner animate-spin text-3xl text-indigo-600" aria-hidden="true"></i>' +
+        '<p class="text-lg font-extrabold text-slate-900">あなた専用の問題を作成中...</p>' +
+        '<p class="text-sm text-slate-500">これまでの弱点と、まだ定着していない表現をもとに出題します（15秒ほど）。</p></div>';
+      $('#total-count').textContent = '–';
+    }
   }
 
   function renderQuestions() {
@@ -1815,10 +2538,14 @@
     }).join('');
 
     if (!pend.length) {
+      var fresh = !sess.items.length;
       box.innerHTML = '<div class="bg-white border border-slate-200 rounded-2xl p-8 text-center space-y-3 shadow-sm">' +
-        '<p class="text-lg font-extrabold text-slate-900">本日の出題はすべて採点済みです</p>' +
-        '<p class="text-sm text-slate-500">「もっと学ぶ」を押すと、新しい3問が出題されます。</p>' +
-        '<button type="button" data-action="more" class="px-6 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-base font-bold transition">もっと学ぶ（＋3問）</button></div>';
+        '<p class="text-lg font-extrabold text-slate-900">' + (fresh ? 'まだ本日の問題がありません' : '本日の出題はすべて採点済みです') + '</p>' +
+        '<p class="text-sm text-slate-500">' + (fresh
+          ? 'ボタンを押すと、これまでの弱点に合わせた3問を作ります。'
+          : '「もっと学ぶ」を押すと、新しい3問が出題されます。') + '</p>' +
+        '<button type="button" data-action="' + (fresh ? 'start-task' : 'more') + '" class="px-6 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-base font-bold transition">' +
+        (fresh ? '問題を作る' : 'もっと学ぶ（＋3問）') + '</button></div>';
     }
 
     $('#total-count').textContent = pend.length;
@@ -1841,16 +2568,25 @@
 
 
 
+  // 同じ使い方の表現（end up -ing / end up doing など）は1件にまとめる
   function mergeVocab(q, item) {
-    var out = [], seen = {};
+    var kept = [];
     (q.vocab || []).concat(item && item.ai ? item.ai.vocab : []).forEach(function (v) {
       if (!v || !v.p) return;
-      var k = String(v.p).toLowerCase();
-      if (seen[k]) return;
-      seen[k] = 1;
-      out.push({ p: v.p, m: v.m || '' });
+      var toks = bankTokens(v.p);
+      if (!toks.length) toks = [String(v.p).toLowerCase()];
+      for (var i = 0; i < kept.length; i++) {
+        if (sameExpression(kept[i].toks, toks)) {
+          var cur = kept[i].v;
+          var na = String(cur.p).split('/').length, nb = String(v.p).split('/').length;
+          if (nb > na || (nb === na && String(v.p).length < String(cur.p).length)) cur.p = v.p;
+          if (!cur.m && v.m) cur.m = v.m;
+          return;
+        }
+      }
+      kept.push({ toks: toks, v: { p: v.p, m: v.m || '' } });
     });
-    return out;
+    return kept.map(function (x) { return x.v; });
   }
 
   /* ---- 添削カードの各セクション（表示順は固定） ---- */
@@ -1896,7 +2632,7 @@
     if (item.ai && item.ai.criteria) {
       var a = item.ai;
       return '<div class="mt-5"><p class="text-xs font-extrabold text-slate-500 mb-2">' + n + '. 観点別評価（各5点満点）</p><div class="space-y-2">' +
-        RUBRIC.map(function (r) {
+        rubricFor(item.ai.phase || 1).map(function (r) {
           var c = a.criteria[r.key] || {};
           var b = Math.max(0, Math.min(5, Number(c.band) || 0));
           var col = b >= 4 ? 'bg-emerald-500' : b >= 3 ? 'bg-amber-500' : 'bg-rose-500';
@@ -1909,7 +2645,26 @@
         }).join('') + '</div></div>';
     }
     if (!g) return '';
-    return '<div class="mt-5"><p class="text-xs font-extrabold text-slate-500 mb-2">' + n + '. フィードバック（簡易採点 — 文法と自然さは判定していません）</p>' +
+
+    var bandsHtml = '';
+    if (g.bands) {
+      bandsHtml = '<div class="space-y-2 mb-3">' + rubricFor(g.phase || 1).map(function (r) {
+        var b = Number(g.bands[r.key]);
+        if (isNaN(b)) return '';
+        var col = b >= 4 ? 'bg-emerald-500' : b >= 3 ? 'bg-amber-500' : 'bg-rose-500';
+        var est = (r.key === 'grammar');
+        return '<div class="bg-white border border-slate-200 rounded-xl p-3">' +
+          '<div class="flex items-center justify-between gap-3 mb-1.5">' +
+          '<span class="font-bold text-slate-800 text-sm">' + esc(r.label) +
+          '<span class="text-slate-400 font-medium ml-1.5">×' + r.weight + '%</span>' +
+          (est ? '<span class="ml-2 text-[11px] font-bold px-1.5 py-0.5 rounded bg-slate-100 text-slate-500">推定</span>' : '') + '</span>' +
+          '<span class="font-mono font-extrabold text-slate-900">' + b.toFixed(1) + '<span class="text-slate-400 text-xs font-medium"> / 5</span></span></div>' +
+          '<div class="h-1.5 rounded-full bg-slate-100 overflow-hidden"><div class="h-full ' + col + '" style="width:' + (b / 5 * 100) + '%"></div></div></div>';
+      }).join('') + '</div>';
+    }
+
+    return '<div class="mt-5"><p class="text-xs font-extrabold text-slate-500 mb-2">' + n + '. 観点別評価（簡易採点・各5点満点）</p>' +
+      bandsHtml +
       '<div class="rounded-xl border border-slate-200 p-4">' +
       '<ul class="space-y-1">' + g.notes.map(function (t) { return '<li class="text-sm text-slate-700 flex gap-2"><span class="text-slate-300">–</span><span>' + esc(t) + '</span></li>'; }).join('') + '</ul>' +
       (g.misses && g.misses.length ? '<p class="text-sm text-rose-700 mt-3">使えなかったキー表現: ' + g.misses.map(function (m) { return '<span class="hl-key">' + esc(m.variants[0]) + '</span>'; }).join(' ') + '</p>' : '') +
@@ -2044,6 +2799,7 @@
         '<span class="chip text-[11px] font-bold px-2 py-0.5 rounded border shrink-0" data-cat="' + esc(b.category) + '">' + CAT_LABEL[b.category] + '</span></div>' +
         '<p class="text-slate-700" style="font-size:1rem;line-height:1.7">' + esc(b.meaning) + '</p>' +
         ((b.misses || 0) >= 2 ? '<p class="text-xs font-extrabold text-rose-600">要重点: ' + b.misses + '回 使えていません</p>' : '') +
+        (b.category !== 'mastered' ? '<p class="text-xs text-slate-500">復習ドリル ' + (b.dc || 0) + ' / ' + DRILL_GOAL + ' 回正解</p>' : '') +
         '<div class="pt-2 flex items-center justify-between text-xs text-slate-400 border-t border-slate-100">' +
         '<span>' + ((b.misses || 0) ? '未使用 <strong class="text-rose-500">' + b.misses + '</strong> 回' : '未使用 0 回') + '</span>' +
         '<span>使えた回数: ' + (b.streak || 0) + '</span></div></div>';
@@ -2142,6 +2898,263 @@
       : '条件に一致する記録はありません。';
   }
 
+
+  /* ============ 復習ドリル ============ */
+  var DRILL_GOAL = 3;              // 何回正解したら復習リストから外すか
+  var drillIdx = 0;                // いま何問目か
+  var drillAnswered = false;       // 判定済みか
+  var drillMaking = false;
+  var drillOrder = [];             // 出題順を固定する（採点で並びが入れ替わらないように）
+
+  function bankById(id) {
+    for (var i = 0; i < state.bank.length; i++) { if (state.bank[i].id === id) return state.bank[i]; }
+    return null;
+  }
+
+  function drillEligible(b) {
+    return b && b.category !== 'mastered' && (b.dc || 0) < DRILL_GOAL;
+  }
+
+  // 固定した順序のうち、まだ卒業していないものだけを返す
+  function activeOrder() {
+    var out = [];
+    drillOrder.forEach(function (id) {
+      var b = bankById(id);
+      if (drillEligible(b)) out.push(b);
+    });
+    return out;
+  }
+
+  function rebuildOrder() {
+    drillOrder = drillQueue().map(function (b) { return b.id; });
+    drillIdx = 0;
+  }
+
+  function drillQueue() {
+    return sortedBank().filter(function (b) {
+      return b.category !== 'mastered' && (b.dc || 0) < DRILL_GOAL;
+    });
+  }
+
+  function drillAlts(b) {
+    return String(b.phrase).split('/').map(function (x) {
+      return x.replace(/\([^)]*\)/g, ' ').replace(/\[[^\]]*\]/g, ' ').trim();
+    }).filter(Boolean);
+  }
+
+  // AIで作った短文カード。無ければ意味から英語を答える語彙リコール形式にする。
+  function drillCard(b) {
+    var key = b.key || bankKey(b.phrase);
+    var d = (state.drills || {})[key];
+    if (d && d.jp && d.en) return d;
+    return null;
+  }
+
+  var DRILL_SYSTEM = 'You write very short English drill sentences for Japanese learners. ' +
+    'You always reply with a single valid JSON object and nothing else — no markdown fences, no commentary.';
+
+  function buildDrillPrompt(list) {
+    return '次の英語表現それぞれについて、復習用の短文を1つずつ作ってください。\n\n' +
+      list.map(function (b) { return '- ' + b.phrase + '（' + (b.meaning || '') + '）'; }).join('\n') + '\n\n' +
+      '【条件】\n' +
+      '- 英文は5語以内を基本とし、最大でも7語まで。\n' +
+      '- その表現を使わなければ書けない、自然な日常文にしてください。\n' +
+      '- jp は英文に対応する自然な日本語。直訳調にしないでください。\n' +
+      '- blank は en から対象表現の部分だけを ____ に置き換えたもの。それ以外は en と完全に同じにしてください。\n\n' +
+      '次のJSON形式で返してください。\n' +
+      '{\n' +
+      '  "cards": [{"p": "対象の表現（入力と同じ文字列）", "jp": "日本語", "en": "英文（5語以内）", "blank": "____ を含む英文"}]\n' +
+      '}';
+  }
+
+  function makeDrills(list) {
+    if (!getKey() || !list.length || drillMaking) return Promise.resolve(false);
+    drillMaking = true;
+    return fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json', 'x-api-key': getKey(),
+        'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: getModel(), max_tokens: 2000, system: DRILL_SYSTEM,
+        messages: [{ role: 'user', content: buildDrillPrompt(list) }]
+      })
+    }).then(function (res) {
+      return res.json().then(function (data) {
+        if (!res.ok) throw new Error((data && data.error && data.error.message) || ('HTTP ' + res.status));
+        var text = (data.content || []).map(function (c) { return c.type === 'text' ? c.text : ''; }).join('');
+        var j = parseAiJson(text);
+        var cards = Array.isArray(j.cards) ? j.cards : [];
+        state.drills = state.drills || {};
+        cards.forEach(function (c) {
+          if (!c || !c.p || !c.jp || !c.en) return;
+          var k = bankKey(c.p);
+          if (!k) return;
+          state.drills[k] = { jp: String(c.jp), en: String(c.en), blank: String(c.blank || '') };
+        });
+        save();
+        drillMaking = false;
+        return true;
+      });
+    }).then(null, function (e) { drillMaking = false; throw e; });
+  }
+
+  function ensureDrills() {
+    var q = drillQueue().slice(0, 8).filter(function (b) { return !drillCard(b); });
+    if (!q.length || !getKey()) return Promise.resolve(false);
+    return makeDrills(q).catch(function (e) {
+      console.warn('復習カードの作成に失敗しました', e);
+      return false;
+    });
+  }
+
+  function renderDrill() {
+    var q = activeOrder();
+    if (!q.length) { rebuildOrder(); q = activeOrder(); }
+
+    $('#drill-remaining').textContent = q.length;
+    $('#drill-count-badge').textContent = q.length;
+    $('#drill-empty').classList.toggle('hidden', q.length > 0);
+
+    var box = $('#drill-body');
+    if (!q.length) { box.innerHTML = ''; return; }
+    if (drillIdx >= q.length) drillIdx = 0;
+
+    var b = q[drillIdx];
+    var card = drillCard(b);
+    // 穴埋めと和文英訳を交互に。カードが無ければ意味から表現を答える形式。
+    var mode = !card ? 'recall' : (drillIdx % 2 === 0 ? 'translate' : 'blank');
+    if (mode === 'blank' && (!card.blank || card.blank.indexOf('____') === -1)) mode = 'translate';
+
+    var prompt, sub;
+    if (mode === 'recall') {
+      prompt = esc(b.meaning || b.phrase);
+      sub = 'この意味になる英語表現を書いてください';
+    } else if (mode === 'blank') {
+      prompt = esc(card.blank).replace(/____/g, '<span class="text-indigo-600 font-mono">____</span>');
+      sub = '空欄に入る表現を書いてください（日本語: ' + esc(card.jp) + '）';
+    } else {
+      prompt = esc(card.jp);
+      sub = 'これを英語にしてください（5語程度）';
+    }
+
+    var dots = '';
+    for (var i = 0; i < DRILL_GOAL; i++) {
+      dots += '<span class="w-2.5 h-2.5 rounded-full ' + (i < (b.dc || 0) ? 'bg-emerald-500' : 'bg-slate-200') + '"></span>';
+    }
+
+    box.innerHTML =
+      '<div class="bg-white border border-slate-200 rounded-2xl p-6 md:p-8 shadow-sm space-y-5">' +
+        '<div class="flex flex-wrap items-center justify-between gap-3">' +
+          '<div class="flex items-center gap-2">' +
+            '<span class="text-xs font-extrabold px-2 py-1 rounded border ' +
+              (mode === 'blank' ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200') + '">' +
+              (mode === 'blank' ? '穴埋め' : mode === 'recall' ? '意味から想起' : '和文英訳') + '</span>' +
+            '<span class="text-xs text-slate-400 font-bold">' + (drillIdx + 1) + ' / ' + q.length + '</span>' +
+            ((b.misses || 0) >= 2 ? '<span class="text-xs font-bold text-rose-600">未使用 ' + b.misses + ' 回</span>' : '') +
+          '</div>' +
+          '<div class="flex items-center gap-1.5" title="3回正解で復習リストから外れます">' + dots + '</div>' +
+        '</div>' +
+
+        '<div>' +
+          '<p class="text-xs font-bold text-slate-400 mb-2">' + sub + '</p>' +
+          '<p class="q-jp text-slate-900 border-l-4 border-indigo-400 pl-4 py-1">' + prompt + '</p>' +
+        '</div>' +
+
+        '<div>' +
+          '<label class="sr-only" for="drill-input">解答欄</label>' +
+          '<input id="drill-input" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Type your English here..." ' +
+            'class="w-full bg-white border-2 border-slate-200 focus:border-indigo-500 rounded-xl p-4 ans-in text-slate-900 placeholder-slate-300 focus:outline-none transition">' +
+        '</div>' +
+
+        '<div id="drill-result"></div>' +
+
+        '<div class="flex flex-wrap items-center justify-between gap-3">' +
+          '<button type="button" data-action="drill-skip" class="text-sm text-slate-500 hover:text-slate-700 underline underline-offset-4 font-medium">この表現は飛ばす</button>' +
+          '<div class="flex gap-2">' +
+            '<button type="button" data-action="drill-check" id="drill-check" class="px-6 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-base font-bold shadow transition">答え合わせ</button>' +
+            '<button type="button" data-action="drill-next" id="drill-next" class="hidden px-6 py-3 rounded-xl bg-slate-800 hover:bg-slate-900 text-white text-base font-bold shadow transition">次へ</button>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
+
+    drillAnswered = false;
+    var inp = $('#drill-input');
+    if (inp) inp.focus();
+  }
+
+  function drillCheck() {
+    if (drillAnswered) return;
+    var q = activeOrder();
+    if (!q.length) return;
+    if (drillIdx >= q.length) drillIdx = 0;
+    var b = q[drillIdx];
+    var inp = $('#drill-input');
+    var val = (inp ? inp.value : '').trim();
+    if (!val) { inp && inp.focus(); return; }
+
+    var alts = drillAlts(b);
+    var card = drillCard(b);
+    var norm = normalize(val);
+    // 語形違いを許容し、模範解答とほぼ一致する場合も正解にする
+    var ok = hasAnyLoose(norm, alts) ||
+             (card && card.en && normalize(card.en) === norm);
+
+    drillAnswered = true;
+    b.dc = b.dc || 0;
+
+    if (ok) {
+      b.dc += 1;
+      b.streak = (b.streak || 0) + 1;
+      if (b.misses) b.misses = Math.max(0, b.misses - 1);
+      if (b.dc >= DRILL_GOAL) {
+        b.category = 'mastered';
+        b.next = '6日後';
+        b.misses = 0;
+      }
+    } else {
+      b.dc = Math.max(0, b.dc - 1);
+      b.misses = (b.misses || 0) + 1;
+      if (b.category === 'new') b.category = 'recall';
+    }
+    b.u = Date.now();
+    save();
+
+    var res = $('#drill-result');
+    var graduated = ok && b.category === 'mastered';
+    res.innerHTML =
+      '<div class="rounded-xl border-2 p-4 space-y-2 ' + (ok ? 'border-emerald-300 bg-emerald-50' : 'border-rose-300 bg-rose-50') + '">' +
+        '<p class="font-extrabold ' + (ok ? 'text-emerald-800' : 'text-rose-800') + '">' +
+          (graduated ? '正解 — この表現は定着しました。復習リストから外します。' : ok ? '正解' : 'おしい') + '</p>' +
+        '<p class="text-sm text-slate-600">狙いの表現: <span class="font-mono font-bold text-slate-900">' + esc(b.phrase) + '</span>' +
+          (b.meaning ? '（' + esc(b.meaning) + '）' : '') + '</p>' +
+        (card ? '<p class="q-en text-slate-800 bg-white border border-slate-200 rounded-lg p-3">' + esc(card.en) + '</p>' : '') +
+        (ok ? '' : '<p class="text-sm text-slate-600">あなたの解答: ' + esc(val) + '</p>') +
+      '</div>';
+
+    $('#drill-check').classList.add('hidden');
+    $('#drill-next').classList.remove('hidden');
+    $('#drill-next').focus();
+    $('#drill-count-badge').textContent = activeOrder().length;
+    $('#drill-remaining').textContent = activeOrder().length;
+  }
+
+  function drillNext() {
+    var q = activeOrder();
+    var cur = q[drillIdx];
+    // 直前の問題が卒業して一覧から消えた場合、番号を進めると1問飛ばしてしまう
+    if (cur && drillEligible(cur)) drillIdx += 1;
+    if (drillIdx >= activeOrder().length) drillIdx = 0;
+    renderDrill();
+  }
+
+  function openDrill() {
+    if (!activeOrder().length) rebuildOrder();
+    renderDrill();
+    ensureDrills().then(function (made) { if (made) renderDrill(); });
+  }
+
   /* ============ timer ============ */
   var timerId = null, deadline = 0, remain = 0;
   function startTimer(seconds) {
@@ -2178,6 +3191,7 @@
     if (name === 'dashboard') renderDashboard();
     if (name === 'bank') renderBank();
     if (name === 'history') renderHistory();
+    if (name === 'drill') openDrill();
     if (name === 'settings') renderSettings();
     if (opts.hash !== false && location.hash.slice(1) !== name) history.replaceState(null, '', '#' + name);
     var reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -2193,12 +3207,50 @@
     });
   }
 
+  var preparing = false;
+
   function startTask() {
-    ensureSession(TODAY);
-    renderQuestions();
-    var sess = state.sessions[TODAY];
-    startTimer(sess.items.length * 180); // 1問あたり3分の目安
+    var existing = state.sessions[TODAY];
+    // すでに未採点の問題があるなら、それを続ける
+    if (existing && pendingItems(existing).length) {
+      renderQuestions();
+      startTimer(pendingItems(existing).length * 180);
+      switchView('writing');
+      return;
+    }
+    if (existing) { moreQuestions(); return; }
+
+    if (!personalizedOn()) {
+      ensureSession(TODAY);
+      renderQuestions();
+      startTimer(pendingItems(state.sessions[TODAY]).length * 180);
+      switchView('writing');
+      return;
+    }
+
+    if (preparing) return;
+    preparing = true;
     switchView('writing');
+    showPreparing(true);
+    prepareRound(TODAY, 1).then(function (items) {
+      state.sessions[TODAY] = { rounds: 1, items: items, phase: state.phase };
+      save();
+      preparing = false;
+      renderQuestions();
+      startTimer(items.length * 180);
+      notePersonalized();
+    });
+  }
+
+  function notePersonalized() {
+    var badge = $('#task-day-badge');
+    if (!badge) return;
+    if (lastGenError) {
+      badge.textContent = '収録問題（生成失敗）';
+      badge.title = lastGenError;
+    } else if (personalizedOn()) {
+      badge.textContent = 'あなた専用の出題';
+    }
   }
 
   function submitAll() {
@@ -2220,7 +3272,8 @@
       targets.forEach(function (it) {
         var g = grade(it);
         it.score = g.score;
-        it.detail = { notes: g.notes, misses: g.misses.map(function (m) { return { variants: m.variants }; }) };
+        it.detail = { notes: g.notes, bands: g.bands, phase: g.phase,
+                      misses: g.misses.map(function (m) { return { variants: m.variants }; }) };
       });
     }
 
@@ -2258,7 +3311,8 @@
         if (it.ai) return;
         var g = grade(it);
         it.score = g.score;
-        it.detail = { notes: g.notes, misses: g.misses.map(function (m) { return { variants: m.variants }; }) };
+        it.detail = { notes: g.notes, bands: g.bands, phase: g.phase,
+                      misses: g.misses.map(function (m) { return { variants: m.variants }; }) };
       });
       if (failed.length) {
         var uniq = failed.filter(function (v, i2) { return failed.indexOf(v) === i2; });
@@ -2275,14 +3329,36 @@
 
   function moreQuestions() {
     syncAnswers();
-    addRound();
-    topUpIfLow();
-    renderQuestions();
-    var sess = state.sessions[TODAY];
-    startTimer(3 * 180);
+    if (personalizedOn() && !state.sessions[TODAY]) { startTask(); return; }
+    var sess = ensureSession(TODAY);
+
+    if (!personalizedOn()) {
+      addRound();
+      topUpIfLow();
+      renderQuestions();
+      startTimer(3 * 180);
+      switchView('writing');
+      var first = $$('.ans-input').filter(function (t) { return !t.value.trim(); })[0];
+      if (first) first.focus();
+      return;
+    }
+
+    if (preparing) return;
+    preparing = true;
+    lastGenError = '';
     switchView('writing');
-    var first = $$('.ans-input').filter(function (t) { return !t.value.trim(); })[0];
-    if (first) first.focus();
+    showPreparing(true);
+    prepareRound(TODAY, sess.rounds + 1).then(function (items) {
+      sess.rounds += 1;
+      sess.items = sess.items.concat(items);
+      save();
+      preparing = false;
+      renderQuestions();
+      startTimer(items.length * 180);
+      notePersonalized();
+      var f = $$('.ans-input').filter(function (t) { return !t.value.trim(); })[0];
+      if (f) f.focus();
+    });
   }
 
   function setTag(id, type, phrase, meaning) {
@@ -2336,6 +3412,9 @@
         break;
       }
       case 'test-key': testKey(); break;
+      case 'drill-check': drillCheck(); break;
+      case 'drill-next':  drillNext(); break;
+      case 'drill-skip':  drillIdx += 1; if (drillIdx >= activeOrder().length) drillIdx = 0; renderDrill(); break;
       case 'sync-save': {
         var tk = ($('#gh-token').value || '').trim();
         var gid = ($('#gist-id').value || '').trim();
@@ -2443,11 +3522,17 @@
     }
     if (e.target && e.target.id === 'api-model') { setModel(e.target.value); renderSettings(); }
     if (e.target && e.target.id === 'gen-toggle') { setAutoGen(e.target.checked); renderGenStatus(); }
+    if (e.target && e.target.id === 'q-mode') { setQMode(e.target.value); renderGenStatus(); renderDashboard(); }
   });
 
   document.addEventListener('keydown', function (e) {
     if ((e.ctrlKey || e.metaKey) && e.key === 'Enter' && !$('#view-writing').classList.contains('hidden')) {
       e.preventDefault(); submitAll();
+    }
+    // 復習ドリルは Enter だけで進める
+    if (e.key === 'Enter' && !$('#view-drill').classList.contains('hidden')) {
+      e.preventDefault();
+      if (drillAnswered) drillNext(); else drillCheck();
     }
   });
 
@@ -2460,7 +3545,7 @@
 
   /* ============ init ============ */
   dedupeBank();
-  ensureSession(TODAY);
+  if (!personalizedOn()) ensureSession(TODAY);
   renderQuestions();
   renderBank();
   renderDashboard();
