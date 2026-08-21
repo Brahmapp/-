@@ -58,6 +58,8 @@
 
   .bank-tab[aria-pressed="true"] { background:#4f46e5; color:#fff; }
 
+  body.no-tts .tts-btn { display:none; }
+
   :focus-visible { outline:2px solid #4f46e5; outline-offset:2px; }
 
   @media (prefers-reduced-motion: reduce) {
@@ -269,17 +271,19 @@
         <p class="text-sm text-slate-500 mt-1">本日の3問とは別に、まだ定着していない表現だけを短文で確認します。</p>
       </div>
       <div class="text-right shrink-0">
-        <div class="text-xs text-slate-500 font-bold">残り</div>
+        <div class="text-xs text-slate-500 font-bold">本日の残り</div>
         <div class="text-3xl font-extrabold text-indigo-600"><span id="drill-remaining">0</span><span class="text-sm text-slate-400 font-medium ml-1">語</span></div>
       </div>
     </div>
-    <p class="text-xs text-slate-500"><strong class="text-slate-700">3回正解すると復習リストから外れます。</strong>間違えるとカウントが1つ戻ります。</p>
+    <p class="text-xs text-slate-500"><strong class="text-slate-700">1 → 3 → 7 → 14日の計4回</strong>で定着済みになります。間違えると予定は最初に戻り、その日のうちに3問後へ再出題されます。</p>
+    <p id="drill-total-note" class="text-xs text-slate-500"></p>
   </div>
 
   <div id="drill-body"></div>
 
   <p id="drill-empty" class="hidden text-center py-12 text-slate-500">
-    復習が必要な表現はありません。添削を受けると、使えなかった表現がここに溜まります。
+    <span class="block text-lg font-extrabold text-slate-800 mb-1">本日の復習は完了です</span>
+    <span id="drill-next-due"></span>
   </p>
 </section>
 
@@ -378,6 +382,38 @@
         <li>キーをファイルに直接書き込むのは絶対に避けてください。公開すると第三者に使われ、請求はあなたに来ます。</li>
         <li>使いすぎが不安な場合は、Anthropicのコンソールで利用上限額を設定できます。</li>
       </ul>
+    </div>
+
+    <div class="border-t-2 border-slate-100 pt-6 space-y-4">
+      <div>
+        <h3 class="text-xl font-extrabold text-slate-900 flex items-center gap-2">
+          <i class="ph-bold ph-speaker-high text-indigo-600" aria-hidden="true"></i> 音声読み上げ
+        </h3>
+        <p class="text-sm text-slate-500 mt-1">模範解答や書き直しをブラウザの音声で読み上げます。追加費用はかかりません。</p>
+      </div>
+      <div id="tts-status" class="rounded-xl border p-4 text-sm font-bold"></div>
+      <label class="flex items-center gap-3 cursor-pointer">
+        <input id="tts-toggle" type="checkbox" class="w-5 h-5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
+        <span class="text-sm font-bold text-slate-700">読み上げボタンを表示する</span>
+      </label>
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div>
+          <label for="tts-rate" class="block text-xs font-bold text-slate-500 mb-1">読み上げ速度</label>
+          <select id="tts-rate" class="w-full bg-white border-2 border-slate-200 focus:border-indigo-500 rounded-xl px-3 py-2.5 text-base font-semibold text-slate-900 focus:outline-none">
+            <option value="0.6">ゆっくり (0.6x)</option>
+            <option value="0.75">やや遅い (0.75x)</option>
+            <option value="0.9">標準 (0.9x)</option>
+            <option value="1">速い (1.0x)</option>
+          </select>
+        </div>
+        <div>
+          <label for="tts-voice" class="block text-xs font-bold text-slate-500 mb-1">声</label>
+          <select id="tts-voice" class="w-full bg-white border-2 border-slate-200 focus:border-indigo-500 rounded-xl px-3 py-2.5 text-base font-semibold text-slate-900 focus:outline-none"></select>
+        </div>
+      </div>
+      <button type="button" data-action="speak" data-text="This is how the model answers will sound." class="px-5 py-2.5 rounded-xl bg-white hover:bg-slate-50 text-slate-700 text-sm font-bold border border-slate-300 transition">
+        テスト再生
+      </button>
     </div>
 
     <div class="border-t-2 border-slate-100 pt-6 space-y-4">
@@ -1375,7 +1411,10 @@
       '  "good": ["よくできている点を日本語で。最大3件"],\n' +
       '  "vocab": [{"p": "この解答から学ぶべき英語表現", "m": "日本語の意味"}]\n' +
       '}\n' +
-      'vocab では、使い方が同じ表現を書き分けないでください（例: 「end up -ing」と「end up doing」は同一なので1件にまとめる）。\n' +
+      'vocab では、同じ核を持つ表現を複数の形で書き分けないでください。核となる部分を1つだけ挙げてください。\n' +
+      '  悪い例: 「be tied up」と「tied up」を別々に挙げる → 「tied up」だけにする\n' +
+      '  悪い例: 「have until ...」と「have until X to do」を別々に挙げる → 「have until」だけにする\n' +
+      '  悪い例: 「end up -ing」と「end up doing」を別々に挙げる → どちらか1つにする\n' +
       'issues は最大5件、vocab は最大4件。解答が未記入や的外れな場合も、バンドは正直に付けてください。';
   }
 
@@ -1507,6 +1546,33 @@
     });
   }
 
+
+  function renderTtsSettings() {
+    var box = $('#tts-status');
+    if (!box) return;
+    var on = TTS_OK && ttsEnabled();
+    box.className = 'rounded-xl border p-4 text-sm font-bold ' +
+      (!TTS_OK ? 'border-amber-200 bg-amber-50 text-amber-800'
+               : on ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
+                    : 'border-slate-200 bg-slate-50 text-slate-600');
+    box.textContent = !TTS_OK
+      ? 'このブラウザは音声読み上げに対応していません。'
+      : on ? '読み上げ: 有効（英語の音声 ' + ttsVoices.length + ' 種類が利用できます）'
+           : '読み上げ: 無効';
+
+    var r = $('#tts-rate'); if (r) r.value = String(ttsRate());
+    var t = $('#tts-toggle'); if (t) { t.checked = ttsEnabled(); t.disabled = !TTS_OK; }
+    var v = $('#tts-voice');
+    if (v) {
+      v.innerHTML = ttsVoices.length
+        ? ttsVoices.map(function (x) { return '<option value="' + esc(x.name) + '">' + esc(x.name) + '（' + esc(x.lang) + '）</option>'; }).join('')
+        : '<option value="">利用できる音声がありません</option>';
+      var want = ttsVoiceName();
+      if (want && v.querySelector('option[value="' + want.replace(/"/g, '\\"') + '"]')) v.value = want;
+      v.disabled = !ttsVoices.length;
+    }
+  }
+
   function renderSettings() {
     var sel = $('#api-model');
     if (!sel.options.length) {
@@ -1526,6 +1592,7 @@
     $('#api-key').placeholder = has ? '登録済み（変更する場合のみ入力）' : 'sk-ant-...';
     renderSyncStatus();
     renderGenStatus();
+    renderTtsSettings();
   }
 
 
@@ -2086,7 +2153,7 @@
       '  }]\n' +
       '}\n' +
       'free は必ず1問、translate は必ず2問。keys には自然な言い換えを2〜3個含めてください。\n' +
-      'vocab では、使い方が同じ表現を書き分けないでください（例: 「end up -ing」と「end up doing」は同一なので1件にまとめる）。';
+      'vocab では、同じ核を持つ表現を複数の形で書き分けないでください（例: 「be tied up」と「tied up」、「have until ...」と「have until X to do」は同一なので核だけを1件挙げる）。';
   }
 
   // 1回のAPI呼び出しで、その人向けの3問を作る
@@ -2224,6 +2291,9 @@
     'myself': 1, 'yourself': 1, 'himself': 1, 'herself': 1, 'ourselves': 1, 'themselves': 1
   };
 
+  // 「be tied up」と「tied up」を同一視するため、先頭の be 動詞を落とす
+  var LEAD_COPULA = { be: 1, is: 1, am: 1, are: 1, was: 1, were: 1, been: 1, being: 1 };
+
   function bankTokens(phrase) {
     var p = String(phrase || '').toLowerCase()
       .replace(/[\u2018\u2019]/g, "'")
@@ -2238,9 +2308,16 @@
     raw.forEach(function (w, i) {
       if (!w) return;
       if (i === 0 && w === 'to') return;                        // 不定詞の to を落とす
-      if (i > 0 && PLACEHOLDERS[w]) return;                     // 先頭以外のプレースホルダを落とす
+      if (i > 0 && PLACEHOLDERS[w]) {
+        // 「have until X to do」の to do のように、プレースホルダ直前の to も一緒に落とす
+        if (out.length && out[out.length - 1] === 'to') out.pop();
+        return;
+      }
       out.push(PRONOUNS[w] ? '_' : w);                          // 人称は共通化する
     });
+
+    // 先頭の be 動詞を落とす（落とすと空になる場合は残す）
+    while (out.length > 1 && LEAD_COPULA[out[0]]) out.shift();
     return out;
   }
 
@@ -2252,6 +2329,8 @@
     if (!a.length || !b.length) return false;
     var sh = a.length <= b.length ? a : b;
     var lo = a.length <= b.length ? b : a;
+    // 2語の句動詞は語の追加で意味が変わる（look up / look up to）ため、
+    // 前方一致による統合は3語以上に限る
     if (sh.length < 3) return sh.join(' ') === lo.join(' ');
     for (var i = 0; i < sh.length; i++) { if (sh[i] !== lo[i]) return false; }
     return true;
@@ -2303,6 +2382,7 @@
       var alts = String(v.p).split('/').map(function (x) { return x.trim(); }).filter(Boolean);
       if (!hasAnyLoose(norm, alts)) {
         b.misses = (b.misses || 0) + 1;
+        scheduleEnroll(b);           // 使えなかった表現を復習予定に載せ直す
         b.u = Date.now();
       } else {
         b.streak = (b.streak || 0) + 1;
@@ -2339,7 +2419,8 @@
         if (!cur.meaning && v.m) cur.meaning = v.m;
         return;
       }
-      state.bank.push({ id: 'v' + hashStr(k), key: k, phrase: v.p, meaning: v.m, category: 'new', next: '明日', streak: 0, misses: 0, u: Date.now() });
+      state.bank.push({ id: 'v' + hashStr(k), key: k, phrase: v.p, meaning: v.m, category: 'new',
+                        stage: 0, due: null, streak: 0, misses: 0, dc: 0, u: Date.now() });
     });
   }
 
@@ -2600,7 +2681,9 @@
   function secCorrected(item) {
     if (!item.ai || !item.ai.corrected) return '';
     return '<div class="mt-5"><p class="text-xs font-extrabold text-slate-500 mb-1">2. 自然な英語への書き直し</p>' +
-      '<p class="q-en text-emerald-900 bg-emerald-50 border-2 border-emerald-200 rounded-xl p-4">' + esc(item.ai.corrected) + '</p></div>';
+      '<div class="flex items-start gap-2 bg-emerald-50 border-2 border-emerald-200 rounded-xl p-4">' +
+      '<p class="q-en text-emerald-900 flex-1">' + esc(item.ai.corrected) + '</p>' +
+      speakBtn(item.ai.corrected) + '</div></div>';
   }
 
   function secIssues(item) {
@@ -2619,11 +2702,16 @@
     if (item.type === 'free') {
       return '<div class="mt-5"><p class="text-xs font-extrabold text-slate-500 mb-2">' + n + '. 模範解答</p>' +
         '<div class="grid grid-cols-1 lg:grid-cols-2 gap-4">' +
-        '<div class="bg-sky-50 border border-sky-200 rounded-xl p-4"><p class="text-xs font-extrabold text-sky-700 mb-2">Casual / 友人向け</p><p class="q-en text-slate-800">' + esc(q.casual) + '</p></div>' +
-        '<div class="bg-indigo-50 border border-indigo-200 rounded-xl p-4"><p class="text-xs font-extrabold text-indigo-700 mb-2">Semi-Formal / 丁寧</p><p class="q-en text-slate-800">' + esc(q.formal) + '</p></div></div></div>';
+        '<div class="bg-sky-50 border border-sky-200 rounded-xl p-4">' +
+          '<div class="flex items-center justify-between gap-2 mb-2"><p class="text-xs font-extrabold text-sky-700">Casual / 友人向け</p>' + speakBtn(q.casual, 'sm') + '</div>' +
+          '<p class="q-en text-slate-800">' + esc(q.casual) + '</p></div>' +
+        '<div class="bg-indigo-50 border border-indigo-200 rounded-xl p-4">' +
+          '<div class="flex items-center justify-between gap-2 mb-2"><p class="text-xs font-extrabold text-indigo-700">Semi-Formal / 丁寧</p>' + speakBtn(q.formal, 'sm') + '</div>' +
+          '<p class="q-en text-slate-800">' + esc(q.formal) + '</p></div></div></div>';
     }
     return '<div class="mt-5"><p class="text-xs font-extrabold text-slate-500 mb-2">' + n + '. 模範解答</p>' +
-      '<div class="bg-indigo-50 border border-indigo-200 rounded-xl p-4"><p class="q-en text-slate-800">' + esc(q.en) + '</p>' +
+      '<div class="bg-indigo-50 border border-indigo-200 rounded-xl p-4">' +
+      '<div class="flex items-start gap-2"><p class="q-en text-slate-800 flex-1">' + esc(q.en) + '</p>' + speakBtn(q.en) + '</div>' +
       (q.tip ? '<p class="text-sm text-indigo-900 mt-3 pt-3 border-t border-indigo-200">' + esc(q.tip) + '</p>' : '') + '</div></div>';
   }
 
@@ -2683,7 +2771,8 @@
     var n = item.ai ? '7' : '4';
     var body = list.map(function (v) {
       var id = 'v' + hashStr(v.p);
-      var info = '<div><div class="font-mono font-bold text-slate-900" style="font-size:1.0625rem">' + esc(v.p) + '</div>' +
+      var info = '<div><div class="font-mono font-bold text-slate-900 flex items-center gap-1" style="font-size:1.0625rem">' +
+                 '<span>' + esc(v.p) + '</span>' + speakBtn(String(v.p).split('/')[0], 'sm') + '</div>' +
                  '<div class="text-sm text-slate-600">' + esc(v.m) + '</div></div>';
       if (!interactive) {
         var cur0 = (state.bank.filter(function (b) { return b.id === id; })[0] || {}).category || 'new';
@@ -2795,14 +2884,15 @@
     box.innerHTML = vis.map(function (b) {
       return '<div class="bg-white border border-slate-200 rounded-xl p-4 shadow-sm space-y-2">' +
         '<div class="flex items-start justify-between gap-2">' +
-        '<span class="font-mono font-bold text-indigo-700" style="font-size:1.0625rem">' + esc(b.phrase) + '</span>' +
+        '<span class="font-mono font-bold text-indigo-700 flex items-center gap-1" style="font-size:1.0625rem">' +
+          '<span>' + esc(b.phrase) + '</span>' + speakBtn(String(b.phrase).split('/')[0], 'sm') + '</span>' +
         '<span class="chip text-[11px] font-bold px-2 py-0.5 rounded border shrink-0" data-cat="' + esc(b.category) + '">' + CAT_LABEL[b.category] + '</span></div>' +
         '<p class="text-slate-700" style="font-size:1rem;line-height:1.7">' + esc(b.meaning) + '</p>' +
         ((b.misses || 0) >= 2 ? '<p class="text-xs font-extrabold text-rose-600">要重点: ' + b.misses + '回 使えていません</p>' : '') +
-        (b.category !== 'mastered' ? '<p class="text-xs text-slate-500">復習ドリル ' + (b.dc || 0) + ' / ' + DRILL_GOAL + ' 回正解</p>' : '') +
+
         '<div class="pt-2 flex items-center justify-between text-xs text-slate-400 border-t border-slate-100">' +
-        '<span>' + ((b.misses || 0) ? '未使用 <strong class="text-rose-500">' + b.misses + '</strong> 回' : '未使用 0 回') + '</span>' +
-        '<span>使えた回数: ' + (b.streak || 0) + '</span></div></div>';
+        '<span>次回復習: <strong class="' + (/今日|明日/.test(dueLabel(b)) ? 'text-amber-600' : 'text-slate-600') + '">' + esc(dueLabel(b)) + '</strong></span>' +
+        '<span>' + (b.category === 'mastered' ? '完了' : (b.stage || 0) + ' / ' + DRILL_STAGES + ' 回') + '</span></div></div>';
     }).join('');
     $('#bank-empty').classList.toggle('hidden', vis.length > 0);
 
@@ -2878,9 +2968,9 @@
       var vocabHtml = vocab.length
         ? '<div class="mt-4 bg-white border border-slate-200 rounded-2xl p-5 shadow-sm"><p class="text-xs font-extrabold text-slate-500 mb-2">この日に学んだ表現（全' + vocab.length + '件）</p>' +
           '<div class="flex flex-wrap gap-2">' + vocab.map(function (v) {
-            return '<span class="inline-flex items-baseline gap-2 bg-indigo-50 border border-indigo-200 rounded-lg px-3 py-1.5">' +
+            return '<span class="inline-flex items-center gap-2 bg-indigo-50 border border-indigo-200 rounded-lg px-3 py-1.5">' +
                    '<span class="font-mono font-bold text-indigo-800" style="font-size:1rem">' + esc(v.p) + '</span>' +
-                   '<span class="text-xs text-slate-600">' + esc(v.m) + '</span></span>';
+                   '<span class="text-xs text-slate-600">' + esc(v.m) + '</span>' + speakBtn(String(v.p).split('/')[0], 'sm') + '</span>';
           }).join('') + '</div></div>'
         : '';
 
@@ -2899,8 +2989,134 @@
   }
 
 
+
+  /* ============ 音声読み上げ（ブラウザ標準・APIコストなし） ============ */
+  var TTS_OK = (typeof window.speechSynthesis !== 'undefined' && typeof window.SpeechSynthesisUtterance !== 'undefined');
+  var TTS_ON_STORE = 'engiflow:tts';
+  var TTS_RATE_STORE = 'engiflow:ttsrate';
+  var TTS_VOICE_STORE = 'engiflow:ttsvoice';
+  var ttsVoices = [];
+
+  function ttsEnabled() { try { return localStorage.getItem(TTS_ON_STORE) !== 'off'; } catch (e) { return true; } }
+  function setTtsEnabled(v) { try { localStorage.setItem(TTS_ON_STORE, v ? 'on' : 'off'); } catch (e) { } }
+  function ttsRate() { var r = parseFloat(lsGet(TTS_RATE_STORE)); return isNaN(r) ? 0.9 : r; }
+  function ttsVoiceName() { return lsGet(TTS_VOICE_STORE); }
+
+  function loadVoices() {
+    if (!TTS_OK) return;
+    var all = window.speechSynthesis.getVoices() || [];
+    ttsVoices = all.filter(function (v) { return /^en(-|_|$)/i.test(v.lang || ''); });
+    if (!ttsVoices.length) ttsVoices = all;
+  }
+
+  function pickVoice() {
+    if (!ttsVoices.length) loadVoices();
+    var want = ttsVoiceName(), i;
+    for (i = 0; i < ttsVoices.length; i++) { if (ttsVoices[i].name === want) return ttsVoices[i]; }
+    // 既定は en-US を優先
+    for (i = 0; i < ttsVoices.length; i++) { if (/en[-_]US/i.test(ttsVoices[i].lang)) return ttsVoices[i]; }
+    return ttsVoices[0] || null;
+  }
+
+  function speak(text, rate) {
+    if (!TTS_OK || !text) return;
+    try {
+      window.speechSynthesis.cancel();          // 連打しても重ならないように
+      var u = new window.SpeechSynthesisUtterance(String(text));
+      var v = pickVoice();
+      if (v) { u.voice = v; u.lang = v.lang; } else { u.lang = 'en-US'; }
+      u.rate = rate || ttsRate();
+      u.pitch = 1;
+      window.speechSynthesis.speak(u);
+    } catch (e) { console.warn('読み上げに失敗しました', e); }
+  }
+
+  // 読み上げボタンのHTML。size: 'sm' で小さめ
+  function speakBtn(text, size) {
+    var t = esc(String(text || '').replace(/\s+/g, ' ').trim());
+    if (!t) return '';
+    var cls = size === 'sm'
+      ? 'tts-btn inline-flex items-center justify-center w-7 h-7 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition align-middle'
+      : 'tts-btn inline-flex items-center justify-center w-9 h-9 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 border border-slate-200 transition shrink-0';
+    return '<button type="button" data-action="speak" data-text="' + t + '" class="' + cls + '" aria-label="英文を読み上げる" title="読み上げる">' +
+      '<i class="ph-bold ph-speaker-high" aria-hidden="true"></i></button>';
+  }
+
   /* ============ 復習ドリル ============ */
-  var DRILL_GOAL = 3;              // 何回正解したら復習リストから外すか
+
+  /* ---- 期日の計算 ---- */
+  function addDays(key, n) {
+    var p = String(key).split('-');
+    var d = new Date(+p[0], +p[1] - 1, +p[2]);
+    d.setDate(d.getDate() + n);
+    return todayKey(d);
+  }
+  function daysBetween(from, to) {
+    var a = String(from).split('-'), b = String(to).split('-');
+    var d1 = new Date(+a[0], +a[1] - 1, +a[2]), d2 = new Date(+b[0], +b[1] - 1, +b[2]);
+    return Math.round((d2 - d1) / 86400000);
+  }
+  function shortDate(key) {
+    var p = String(key).split('-');
+    return (+p[1]) + '月' + (+p[2]) + '日';
+  }
+  function dueLabel(b) {
+    if (b.category === 'mastered') return '完了';
+    if (!b.due) return '—';
+    var diff = daysBetween(TODAY, b.due);
+    if (diff <= 0) return '今日';
+    if (diff === 1) return '明日';
+    return diff + '日後（' + shortDate(b.due) + '）';
+  }
+
+  // 復習予定を1段階進める。4回終えたら定着済みにする。
+  function scheduleAdvance(b) {
+    b.stage = (b.stage || 0) + 1;
+    if (b.stage >= DRILL_STAGES) {
+      b.category = 'mastered';
+      b.due = null;
+      b.misses = 0;
+      return true;                       // 全4回を完了
+    }
+    b.due = addDays(TODAY, DRILL_INTERVALS[b.stage]);
+    return false;
+  }
+
+  // 間違えたら最初からやり直し（翌日に再設定）
+  function scheduleReset(b) {
+    b.stage = 0;
+    b.due = addDays(TODAY, DRILL_INTERVALS[0]);
+  }
+
+  // 添削で使えなかった表現を復習対象に載せる
+  function scheduleEnroll(b) {
+    if (b.category === 'mastered') b.category = 'recall';
+    b.stage = 0;
+    b.due = addDays(TODAY, DRILL_INTERVALS[0]);
+  }
+
+  // 期日を持たない古いデータを、優先度順に日付を散らして移行する
+  function migrateSchedule() {
+    var pending = state.bank.filter(function (b) {
+      return b.category !== 'mastered' && !b.due && (b.misses || 0) >= 1;
+    });
+    if (!pending.length) return;
+    pending.sort(function (a, b) { return (b.misses || 0) - (a.misses || 0); });
+    pending.forEach(function (b, i) {
+      b.stage = Math.min(b.dc || 0, DRILL_STAGES - 1);
+      // 1日あたり DRILL_DAILY_CAP 語ずつになるよう、今日から順に割り当てる
+      b.due = addDays(TODAY, Math.floor(i / DRILL_DAILY_CAP));
+    });
+    save();
+  }
+
+  // 間隔反復の日数。登録の翌日から 1 → 3 → 7 → 14 日で計4回復習する。
+  var DRILL_INTERVALS = [1, 3, 7, 14];
+  var DRILL_STAGES = DRILL_INTERVALS.length;
+  var DRILL_DAILY_CAP = 10;        // 1日に扱う語数の上限（期日が重なったときの保険）
+  var DRILL_REQUEUE_GAP = 3;       // 間違えた語を何問後に再出題するか
+  var drillSeen = {};              // この画面を開いてから各語を何回出したか
+  var drillRequeued = false;       // 直前の語を後ろに差し戻したか
   var drillIdx = 0;                // いま何問目か
   var drillAnswered = false;       // 判定済みか
   var drillMaking = false;
@@ -2912,7 +3128,7 @@
   }
 
   function drillEligible(b) {
-    return b && b.category !== 'mastered' && (b.dc || 0) < DRILL_GOAL;
+    return b && b.category !== 'mastered' && b.due && daysBetween(TODAY, b.due) <= 0;
   }
 
   // 固定した順序のうち、まだ卒業していないものだけを返す
@@ -2926,15 +3142,36 @@
   }
 
   function rebuildOrder() {
-    drillOrder = drillQueue().map(function (b) { return b.id; });
+    drillOrder = drillToday().map(function (b) { return b.id; });
     drillIdx = 0;
+    drillSeen = {};
   }
 
+  // 復習対象は「期日が来た表現」だけ。期日前のものは出さない。
   function drillQueue() {
     return sortedBank().filter(function (b) {
-      return b.category !== 'mastered' && (b.dc || 0) < DRILL_GOAL;
+      return b.category !== 'mastered' && b.due && daysBetween(TODAY, b.due) <= 0;
     });
   }
+
+  // 予約されているが、まだ期日が来ていないもの
+  function drillScheduled() {
+    return state.bank.filter(function (b) {
+      return b.category !== 'mastered' && b.due && daysBetween(TODAY, b.due) > 0;
+    });
+  }
+
+  // 次に期日が来る日
+  function nextDueDate() {
+    var list = drillScheduled();
+    if (!list.length) return null;
+    var min = list[0].due;
+    list.forEach(function (b) { if (b.due < min) min = b.due; });
+    return min;
+  }
+
+  // 本日ぶんだけを切り出す
+  function drillToday() { return drillQueue().slice(0, DRILL_DAILY_CAP); }
 
   function drillAlts(b) {
     return String(b.phrase).split('/').map(function (x) {
@@ -2943,12 +3180,15 @@
   }
 
   // AIで作った短文カード。無ければ意味から英語を答える語彙リコール形式にする。
-  function drillCard(b) {
+  // 保存形式は配列。古い単体オブジェクトの保存データも読めるようにする。
+  function drillCards(b) {
     var key = b.key || bankKey(b.phrase);
     var d = (state.drills || {})[key];
-    if (d && d.jp && d.en) return d;
-    return null;
+    if (!d) return [];
+    var list = Array.isArray(d) ? d : [d];
+    return list.filter(function (c) { return c && c.jp && c.en; });
   }
+  function drillCard(b) { return drillCards(b)[0] || null; }
 
   var DRILL_SYSTEM = 'You write very short English drill sentences for Japanese learners. ' +
     'You always reply with a single valid JSON object and nothing else — no markdown fences, no commentary.';
@@ -2957,13 +3197,17 @@
     return '次の英語表現それぞれについて、復習用の短文を1つずつ作ってください。\n\n' +
       list.map(function (b) { return '- ' + b.phrase + '（' + (b.meaning || '') + '）'; }).join('\n') + '\n\n' +
       '【条件】\n' +
+      '- 各表現につき、場面の異なる短文を2つ作ってください（間違えたときに別の文で再出題するため）。\n' +
       '- 英文は5語以内を基本とし、最大でも7語まで。\n' +
       '- その表現を使わなければ書けない、自然な日常文にしてください。\n' +
       '- jp は英文に対応する自然な日本語。直訳調にしないでください。\n' +
       '- blank は en から対象表現の部分だけを ____ に置き換えたもの。それ以外は en と完全に同じにしてください。\n\n' +
       '次のJSON形式で返してください。\n' +
       '{\n' +
-      '  "cards": [{"p": "対象の表現（入力と同じ文字列）", "jp": "日本語", "en": "英文（5語以内）", "blank": "____ を含む英文"}]\n' +
+      '  "cards": [{"p": "対象の表現（入力と同じ文字列）", "items": [\n' +
+      '    {"jp": "日本語", "en": "英文（5語以内）", "blank": "____ を含む英文"},\n' +
+      '    {"jp": "別の場面の日本語", "en": "別の英文（5語以内）", "blank": "____ を含む英文"}\n' +
+      '  ]}]\n' +
       '}';
   }
 
@@ -2977,7 +3221,7 @@
         'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true'
       },
       body: JSON.stringify({
-        model: getModel(), max_tokens: 2000, system: DRILL_SYSTEM,
+        model: getModel(), max_tokens: 3500, system: DRILL_SYSTEM,
         messages: [{ role: 'user', content: buildDrillPrompt(list) }]
       })
     }).then(function (res) {
@@ -2988,10 +3232,14 @@
         var cards = Array.isArray(j.cards) ? j.cards : [];
         state.drills = state.drills || {};
         cards.forEach(function (c) {
-          if (!c || !c.p || !c.jp || !c.en) return;
+          if (!c || !c.p) return;
           var k = bankKey(c.p);
           if (!k) return;
-          state.drills[k] = { jp: String(c.jp), en: String(c.en), blank: String(c.blank || '') };
+          // items 配列でも、単体形式でも受け取れるようにする
+          var items = Array.isArray(c.items) ? c.items : [c];
+          var ok = items.filter(function (x) { return x && x.jp && x.en; })
+                        .map(function (x) { return { jp: String(x.jp), en: String(x.en), blank: String(x.blank || '') }; });
+          if (ok.length) state.drills[k] = ok;
         });
         save();
         drillMaking = false;
@@ -3001,7 +3249,7 @@
   }
 
   function ensureDrills() {
-    var q = drillQueue().slice(0, 8).filter(function (b) { return !drillCard(b); });
+    var q = drillToday().slice(0, 8).filter(function (b) { return !drillCard(b); });
     if (!q.length || !getKey()) return Promise.resolve(false);
     return makeDrills(q).catch(function (e) {
       console.warn('復習カードの作成に失敗しました', e);
@@ -3013,18 +3261,36 @@
     var q = activeOrder();
     if (!q.length) { rebuildOrder(); q = activeOrder(); }
 
+    var total = drillQueue().length;
     $('#drill-remaining').textContent = q.length;
-    $('#drill-count-badge').textContent = q.length;
+    $('#drill-count-badge').textContent = total;
+    var nd = nextDueDate();
+    var later = drillScheduled().length;
+    $('#drill-total-note').innerHTML =
+      (total > q.length ? '本日の期日ぶんは <strong class="text-slate-800">' + total + '</strong> 語ありますが、1日 ' + DRILL_DAILY_CAP + ' 語ずつ進めます。<br>' : '') +
+      (later ? '予定に入っている表現: <strong class="text-slate-800">' + later + '</strong> 語（次回は ' + shortDate(nd) + '）' : '');
     $('#drill-empty').classList.toggle('hidden', q.length > 0);
+    var nde = $('#drill-next-due');
+    if (nde) {
+      var nd2 = nextDueDate();
+      nde.textContent = nd2
+        ? '次回は ' + shortDate(nd2) + ' に ' + drillScheduled().filter(function (b) { return b.due === nd2; }).length + ' 語の予定です。'
+        : '添削で使えなかった表現があると、翌日から復習予定に入ります。';
+    }
 
     var box = $('#drill-body');
     if (!q.length) { box.innerHTML = ''; return; }
     if (drillIdx >= q.length) drillIdx = 0;
 
     var b = q[drillIdx];
-    var card = drillCard(b);
-    // 穴埋めと和文英訳を交互に。カードが無ければ意味から表現を答える形式。
-    var mode = !card ? 'recall' : (drillIdx % 2 === 0 ? 'translate' : 'blank');
+    var cards = drillCards(b);
+    var seen = drillSeen[b.id] || 0;
+    // 2回目以降は別の文（無ければ別の形式）で出す
+    var card = cards.length ? cards[seen % cards.length] : null;
+    var mode;
+    if (!card) mode = 'recall';
+    else if (cards.length > 1) mode = (seen % 2 === 0) ? 'translate' : 'blank';
+    else mode = (seen === 0) ? 'translate' : 'blank';
     if (mode === 'blank' && (!card.blank || card.blank.indexOf('____') === -1)) mode = 'translate';
 
     var prompt, sub;
@@ -3040,8 +3306,8 @@
     }
 
     var dots = '';
-    for (var i = 0; i < DRILL_GOAL; i++) {
-      dots += '<span class="w-2.5 h-2.5 rounded-full ' + (i < (b.dc || 0) ? 'bg-emerald-500' : 'bg-slate-200') + '"></span>';
+    for (var i = 0; i < DRILL_STAGES; i++) {
+      dots += '<span class="w-2.5 h-2.5 rounded-full ' + (i < (b.stage || 0) ? 'bg-emerald-500' : 'bg-slate-200') + '" title="' + DRILL_INTERVALS[i] + '日後"></span>';
     }
 
     box.innerHTML =
@@ -3052,9 +3318,10 @@
               (mode === 'blank' ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200') + '">' +
               (mode === 'blank' ? '穴埋め' : mode === 'recall' ? '意味から想起' : '和文英訳') + '</span>' +
             '<span class="text-xs text-slate-400 font-bold">' + (drillIdx + 1) + ' / ' + q.length + '</span>' +
+            (seen > 0 ? '<span class="text-xs font-bold text-amber-600">再出題</span>' : '') +
             ((b.misses || 0) >= 2 ? '<span class="text-xs font-bold text-rose-600">未使用 ' + b.misses + ' 回</span>' : '') +
           '</div>' +
-          '<div class="flex items-center gap-1.5" title="3回正解で復習リストから外れます">' + dots + '</div>' +
+          '<div class="flex items-center gap-1.5" title="1→3→7→14日の計4回で定着済みになります">' + dots + '</div>' +
         '</div>' +
 
         '<div>' +
@@ -3102,49 +3369,69 @@
              (card && card.en && normalize(card.en) === norm);
 
     drillAnswered = true;
-    b.dc = b.dc || 0;
+    // 解答したときだけ回数を進める（次に出るときは別の文になる）
+    drillSeen[b.id] = (drillSeen[b.id] || 0) + 1;
 
+    var completed = false, prevStage = b.stage || 0;
     if (ok) {
-      b.dc += 1;
       b.streak = (b.streak || 0) + 1;
+      b.dc = (b.dc || 0) + 1;
       if (b.misses) b.misses = Math.max(0, b.misses - 1);
-      if (b.dc >= DRILL_GOAL) {
-        b.category = 'mastered';
-        b.next = '6日後';
-        b.misses = 0;
-      }
+      completed = scheduleAdvance(b);
     } else {
-      b.dc = Math.max(0, b.dc - 1);
       b.misses = (b.misses || 0) + 1;
       if (b.category === 'new') b.category = 'recall';
+      scheduleReset(b);
+      // 間違えた語は3問後にもう一度出す（別の文で）
+      var ids = activeOrder().map(function (x) { return x.id; });
+      var at = ids.indexOf(b.id);
+      if (at !== -1) {
+        ids.splice(at, 1);
+        ids.splice(Math.min(at + DRILL_REQUEUE_GAP, ids.length), 0, b.id);
+        drillOrder = ids;
+        drillRequeued = true;
+      }
     }
     b.u = Date.now();
     save();
 
     var res = $('#drill-result');
-    var graduated = ok && b.category === 'mastered';
+    var msg;
+    if (completed) {
+      msg = '正解 — 全' + DRILL_STAGES + '回の復習を終えました。定着済みにします。';
+    } else if (ok) {
+      msg = '正解 — 次回は' + DRILL_INTERVALS[b.stage] + '日後（' + shortDate(b.due) + '）です。' +
+            '［' + (prevStage + 1) + ' / ' + DRILL_STAGES + ' 回目 完了］';
+    } else {
+      msg = 'おしい — ' + DRILL_REQUEUE_GAP + '問後に別の文でもう一度出します。予定は最初（翌日）に戻ります。';
+    }
     res.innerHTML =
       '<div class="rounded-xl border-2 p-4 space-y-2 ' + (ok ? 'border-emerald-300 bg-emerald-50' : 'border-rose-300 bg-rose-50') + '">' +
-        '<p class="font-extrabold ' + (ok ? 'text-emerald-800' : 'text-rose-800') + '">' +
-          (graduated ? '正解 — この表現は定着しました。復習リストから外します。' : ok ? '正解' : 'おしい') + '</p>' +
+        '<p class="font-extrabold ' + (ok ? 'text-emerald-800' : 'text-rose-800') + '">' + msg + '</p>' +
         '<p class="text-sm text-slate-600">狙いの表現: <span class="font-mono font-bold text-slate-900">' + esc(b.phrase) + '</span>' +
+          speakBtn(String(b.phrase).split('/')[0], 'sm') +
           (b.meaning ? '（' + esc(b.meaning) + '）' : '') + '</p>' +
-        (card ? '<p class="q-en text-slate-800 bg-white border border-slate-200 rounded-lg p-3">' + esc(card.en) + '</p>' : '') +
+        (card ? '<div class="flex items-start gap-2 bg-white border border-slate-200 rounded-lg p-3">' +
+                '<p class="q-en text-slate-800 flex-1">' + esc(card.en) + '</p>' + speakBtn(card.en) + '</div>' : '') +
         (ok ? '' : '<p class="text-sm text-slate-600">あなたの解答: ' + esc(val) + '</p>') +
       '</div>';
 
     $('#drill-check').classList.add('hidden');
     $('#drill-next').classList.remove('hidden');
     $('#drill-next').focus();
-    $('#drill-count-badge').textContent = activeOrder().length;
+    $('#drill-count-badge').textContent = drillQueue().length;
     $('#drill-remaining').textContent = activeOrder().length;
   }
 
   function drillNext() {
-    var q = activeOrder();
-    var cur = q[drillIdx];
-    // 直前の問題が卒業して一覧から消えた場合、番号を進めると1問飛ばしてしまう
-    if (cur && drillEligible(cur)) drillIdx += 1;
+    if (drillRequeued) {
+      // 差し戻したので、いまの位置には次の語が来ている
+      drillRequeued = false;
+    } else {
+      var cur = activeOrder()[drillIdx];
+      // 直前の問題が卒業して一覧から消えた場合、番号を進めると1問飛ばしてしまう
+      if (cur && drillEligible(cur)) drillIdx += 1;
+    }
     if (drillIdx >= activeOrder().length) drillIdx = 0;
     renderDrill();
   }
@@ -3365,7 +3652,8 @@
     var b = state.bank.filter(function (x) { return x.id === id; })[0];
     if (!b) { b = { id: id, phrase: phrase, meaning: meaning, category: type, next: '明日', streak: 0 }; state.bank.push(b); }
     b.category = type;
-    b.next = type === 'mastered' ? '6日後' : type === 'recall' ? '今日 (SRS Due)' : '明日';
+    if (type === 'mastered') { b.due = null; b.stage = DRILL_STAGES; }
+    else if (!b.due) { b.stage = 0; b.due = addDays(TODAY, DRILL_INTERVALS[0]); }
     b.u = Date.now();   // 同期時にどちらが新しいか判定するため
     save();
     $$('[data-vocab="' + id + '"] .tag-btn').forEach(function (btn) {
@@ -3412,6 +3700,8 @@
         break;
       }
       case 'test-key': testKey(); break;
+      case 'speak': speak(el.getAttribute('data-text')); break;
+      case 'speak-slow': speak(el.getAttribute('data-text'), 0.6); break;
       case 'drill-check': drillCheck(); break;
       case 'drill-next':  drillNext(); break;
       case 'drill-skip':  drillIdx += 1; if (drillIdx >= activeOrder().length) drillIdx = 0; renderDrill(); break;
@@ -3523,6 +3813,13 @@
     if (e.target && e.target.id === 'api-model') { setModel(e.target.value); renderSettings(); }
     if (e.target && e.target.id === 'gen-toggle') { setAutoGen(e.target.checked); renderGenStatus(); }
     if (e.target && e.target.id === 'q-mode') { setQMode(e.target.value); renderGenStatus(); renderDashboard(); }
+    if (e.target && e.target.id === 'tts-toggle') {
+      setTtsEnabled(e.target.checked);
+      document.body.classList.toggle('no-tts', !(TTS_OK && e.target.checked));
+      renderTtsSettings();
+    }
+    if (e.target && e.target.id === 'tts-rate') { lsSet(TTS_RATE_STORE, e.target.value); renderTtsSettings(); }
+    if (e.target && e.target.id === 'tts-voice') { lsSet(TTS_VOICE_STORE, e.target.value); renderTtsSettings(); }
   });
 
   document.addEventListener('keydown', function (e) {
@@ -3544,7 +3841,15 @@
   });
 
   /* ============ init ============ */
+  if (!TTS_OK || !ttsEnabled()) document.body.classList.add('no-tts');
+  if (TTS_OK) {
+    loadVoices();
+    if (typeof window.speechSynthesis.onvoiceschanged !== 'undefined') {
+      window.speechSynthesis.onvoiceschanged = function () { loadVoices(); renderTtsSettings(); };
+    }
+  }
   dedupeBank();
+  migrateSchedule();
   if (!personalizedOn()) ensureSession(TODAY);
   renderQuestions();
   renderBank();
