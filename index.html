@@ -1492,6 +1492,36 @@
 
   function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
 
+  // 使えないパラメータを指定していた場合に備え、外して1回だけやり直す
+  var DROPPABLE_PARAMS = ['temperature', 'top_p', 'top_k'];
+
+  function postMessages(key, body) {
+    return fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'x-api-key': key,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify(body)
+    }).then(function (res) {
+      if (res.status !== 400) return res;
+      return res.clone().json().then(function (data) {
+        var msg = (data && data.error && data.error.message) || '';
+        var hit = null;
+        DROPPABLE_PARAMS.forEach(function (p) {
+          if (body[p] !== undefined && msg.indexOf(p) !== -1) hit = p;
+        });
+        if (!hit) return res;
+        console.warn('未対応のパラメータ ' + hit + ' を外して再送します');
+        var retry = {};
+        Object.keys(body).forEach(function (k) { if (k !== hit) retry[k] = body[k]; });
+        return postMessages(key, retry);
+      }, function () { return res; });
+    });
+  }
+
   function aiGradeOne(item, key, model) {
     return fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -1504,7 +1534,8 @@
       body: JSON.stringify({
         model: model,
         max_tokens: 4000,
-        temperature: 0,          // 同じ答案なら同じ点数になるようにする
+        // temperature は Claude 4.7 以降で廃止され、送ると 400 になるため指定しない。
+        // 採点のぶれ対策は check ステップと過去の採点例（ものさし）で担保する。
         system: AI_SYSTEM,
         messages: [{ role: 'user', content: buildAiPrompt(item) }]
       })
