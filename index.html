@@ -2431,7 +2431,7 @@
   // 文法上のプレースホルダ。「end up -ing」と「end up doing」を同じ表現とみなすために落とす。
   var PLACEHOLDERS = {
     'ing': 1, 'doing': 1, 'do': 1, 'done': 1, 'sth': 1, 'something': 1, 'sb': 1,
-    'someone': 1, 'somebody': 1, 'somewhere': 1, 'oneself': 1, 'ones': 1, 'one': 1,
+    'someone': 1, 'somebody': 1, 'somewhere': 1, 'oneself': 1,
     'v': 1, 'n': 1, 'x': 1, 'y': 1, 'a1': 1, 'etc': 1, 'date': 1, 'time': 1, 'place': 1
   };
   // 人称の違いは表現としては同じ（let me know / let you know）
@@ -3658,15 +3658,86 @@
 
 
   // 「大げさに」のように日本語が曖昧でも、どの表現を答えるか分かるようにする
-  // 複数語の表現は最初の1文字だけ。残りは語数ぶんのダッシュで示す。
-  function initialsHint(phrase) {
-    var parts = coreExpression(String(phrase).split('/')[0]);
-    if (!parts.length) return '';
-    if (parts.length === 1) {
-      // 1語のときだけ文字数も見せる
-      return parts[0].charAt(0) + new Array(parts[0].length).join('_');
+  // ヒントは3段階。自分で必要な分だけ開けてもらう。
+  //  0: 語数と各語の文字数だけ    ___  _______  ___
+  //  1: 各語の頭文字              t__  c______  o__
+  //  2: 最初の語を丸ごと          the  c______  o__
+  var HINT_MAX = 2;
+  var drillHintLevel = 0;      // いま開けている段階
+  var drillHintUsed = 0;       // この問題で最終的に使った段階
+
+  // 穴埋め問題で、____ に入るべき文字列を模範文から取り出す
+  function blankAnswer(card) {
+    if (!card || !card.blank || !card.en) return '';
+    var i = card.blank.indexOf('____');
+    if (i < 0) return '';
+    var pre = card.blank.slice(0, i);
+    var post = card.blank.slice(i + 4);
+    var en = card.en;
+    var p = 0;
+    while (p < pre.length && p < en.length && pre.charAt(p).toLowerCase() === en.charAt(p).toLowerCase()) p++;
+    var q = 0;
+    while (q < post.length && q < en.length - p &&
+           post.charAt(post.length - 1 - q).toLowerCase() === en.charAt(en.length - 1 - q).toLowerCase()) q++;
+    var out = en.slice(p, en.length - q).replace(/^[\s,.:;!?]+|[\s,.:;!?]+$/g, '').trim();
+    // 取り出しに失敗した（空・長すぎる）場合は使わない
+    if (!out || out.length > card.en.length - 2) return '';
+    return out;
+  }
+
+  // ヒントの対象は「実際に入力する文字列」。出題形式ごとに変える。
+  function hintSource(mode, b, card) {
+    if (mode === 'blank') {
+      var a = blankAnswer(card);
+      if (a) return { text: a, label: '空欄に入る語' };
     }
-    return parts[0].charAt(0) + ' ' + new Array(parts.length).join('— ');
+    return {
+      text: String(b.phrase).split('/')[0],
+      label: mode === 'recall' ? '答えの形' : '使う表現'
+    };
+  }
+
+  // 表示用に語を切り出す。プレースホルダを落とした場合は「＋α」を示す。
+  function hintParts(text) {
+    var cleaned = String(text)
+      .replace(/\[[^\]]*\]/g, ' ')
+      .replace(/\([^)]*\)/g, ' ')
+      .replace(/[\u2018\u2019]/g, "'")
+      .replace(/[^A-Za-z0-9'\s-]/g, ' ')
+      .replace(/\s+/g, ' ').trim();
+    var raw = cleaned ? cleaned.split(' ') : [];
+    var parts = [], more = false;
+    raw.forEach(function (w) {
+      var lw = w.toLowerCase().replace(/^-+|-+$/g, '');
+      if (!lw) { more = true; return; }
+      if (PLACEHOLDERS[lw] || /^[a-z]$/.test(lw)) { more = true; return; }
+      parts.push(lw);
+    });
+    // プレースホルダを落とした結果、末尾に取り残された to は表示しない
+    while (more && parts.length > 1 && parts[parts.length - 1] === 'to') parts.pop();
+    // 先頭の be 動詞は入力しないことが多いので外す
+    while (parts.length > 1 && LEAD_COPULA[parts[0]]) { parts.shift(); more = true; }
+    return { parts: parts, more: more };
+  }
+
+  function hintPattern(text, level) {
+    var info = hintParts(text);
+    if (!info.parts.length) return '';
+    var body = info.parts.map(function (w, i) {
+      if (level >= 2 && i === 0) return w;
+      return w.split('').map(function (ch, j) {
+        if (ch === "'" || ch === '-') return ch;
+        if (level >= 1 && j === 0) return ch;
+        return '_';
+      }).join('');
+    }).join('\u3000');
+    return info.more ? body + '\u3000…' : body;
+  }
+
+  function hintCountLabel(text) {
+    var info = hintParts(text);
+    if (!info.parts.length) return '';
+    return info.parts.length + '語' + (info.more ? '＋α' : '');
   }
 
   function renderDrill() {
@@ -3737,12 +3808,17 @@
       sub = 'これを英語にしてください（5語程度）';
     }
 
-    var hint = initialsHint(b.phrase);
+    var hsrc = hintSource(mode, b, card);
+    var hint = hintPattern(hsrc.text, drillHintLevel);
     var hintHtml = hint
-      ? '<div class="mt-3 flex flex-wrap items-center gap-2 text-sm">' +
-        '<span class="text-xs font-bold text-slate-400">ヒント</span>' +
-        '<span class="font-mono font-bold text-indigo-700 tracking-widest" style="font-size:1.125rem">' + esc(hint) + '</span>' +
-        '<span class="text-xs text-slate-400">（' + coreExpression(String(b.phrase).split('/')[0]).length + '語）</span></div>'
+      ? '<div class="mt-3 flex flex-wrap items-center gap-3">' +
+        '<span class="text-xs font-bold text-slate-400">' + esc(hsrc.label) + '</span>' +
+        '<span class="font-mono font-bold text-indigo-700" style="font-size:1.25rem;letter-spacing:0.08em">' + esc(hint) + '</span>' +
+        '<span class="text-xs text-slate-400">（' + hintCountLabel(hsrc.text) + '）</span>' +
+        (drillHintLevel < HINT_MAX
+          ? '<button type="button" data-action="drill-hint" class="px-2.5 py-1 rounded-lg text-xs font-bold border border-slate-300 bg-white hover:bg-indigo-50 hover:text-indigo-700 transition">ヒントを増やす（' + drillHintLevel + '/' + HINT_MAX + '）</button>'
+          : '<span class="text-xs font-bold text-amber-600">ヒント最大</span>') +
+        '</div>'
       : '';
 
     var dots = '';
@@ -3806,11 +3882,17 @@
     if (!val) { inp && inp.focus(); return; }
 
     var alts = drillAlts(b);
-    var card = drillCard(b);
+    var cardsC = drillCards(b);
+    var seenC = Math.max(0, (drillSeen[b.id] || 0));
+    var card = cardsC.length ? cardsC[seenC % cardsC.length] : null;
+    var hasBlankC = card && card.blank && card.blank.indexOf('____') !== -1;
+    var mode = !card ? 'recall' : (hasBlankC ? ((seenC % 3 === 2) ? 'translate' : 'blank') : 'translate');
     var norm = normalize(val);
     // 狙いの表現が入っていれば正解。主語・時制・前後の語のずれは不問。
+    var exact = (mode === 'blank') ? blankAnswer(card) : '';
     var ok = matchesAnyExpression(norm, alts) ||
              hasAnyLoose(norm, alts) ||
+             (exact && normalize(exact) === norm) ||
              (card && card.en && normalize(card.en) === norm);
 
     drillAnswered = true;
@@ -3860,7 +3942,15 @@
       return;
     }
 
-    if (ok) {
+    var heavyHint = (drillHintUsed >= HINT_MAX);
+
+    if (ok && heavyHint) {
+      // 最大ヒントで当てた場合は「自力で出せた」とは見なさない。
+      // 予定は進めず、翌日にもう一度確認する。
+      b.streak = (b.streak || 0) + 1;
+      delete drillRetry[b.id];
+      b.due = addDays(TODAY, DRILL_INTERVALS[0]);
+    } else if (ok) {
       b.streak = (b.streak || 0) + 1;
       b.dc = (b.dc || 0) + 1;
       if (b.dmiss) b.dmiss = Math.max(0, b.dmiss - 1);
@@ -3890,6 +3980,8 @@
     var msg;
     if (completed) {
       msg = '正解 — 全' + DRILL_STAGES + '回の復習を終えました。定着済みにします。';
+    } else if (ok && heavyHint) {
+      msg = '正解（ヒントあり）— 自力で出せるよう、明日もう一度出します。［' + prevStage + ' / ' + DRILL_STAGES + ' 回目のまま］';
     } else if (ok) {
       msg = '正解 — 次回は' + DRILL_INTERVALS[b.stage] + '日後（' + shortDate(b.due) + '）です。' +
             '［' + (prevStage + 1) + ' / ' + DRILL_STAGES + ' 回目 完了］';
@@ -3916,6 +4008,8 @@
   }
 
   function drillNext() {
+    drillHintLevel = 0;          // 次の問題ではヒントを閉じる
+    drillHintUsed = 0;
     if (drillRequeued) {
       // 差し戻したので、いまの位置には次の語が来ている
       drillRequeued = false;
@@ -3929,6 +4023,7 @@
   }
 
   function openDrill() {
+    drillHintLevel = 0; drillHintUsed = 0;
     // 画面を開いたときだけ、その日の対象を組み直す
     if (!drillOrder.length || !activeOrder().length) rebuildOrder();
     renderDrill();
@@ -4197,8 +4292,19 @@
       case 'speak': speak(el.getAttribute('data-text')); break;
       case 'speak-slow': speak(el.getAttribute('data-text'), 0.6); break;
       case 'drill-check': drillCheck(); break;
+      case 'drill-hint':
+        if (drillHintLevel < HINT_MAX) {
+          drillHintLevel += 1;
+          drillHintUsed = Math.max(drillHintUsed, drillHintLevel);
+          var keep = $('#drill-input') ? $('#drill-input').value : '';
+          renderDrill();
+          var inp2 = $('#drill-input');
+          if (inp2) { inp2.value = keep; inp2.focus(); }
+        }
+        break;
       case 'drill-next':  drillNext(); break;
-      case 'drill-skip':  drillIdx += 1; if (drillIdx >= activeOrder().length) drillIdx = 0; renderDrill(); break;
+      case 'drill-skip':  drillHintLevel = 0; drillHintUsed = 0; drillIdx += 1;
+                          if (drillIdx >= activeOrder().length) drillIdx = 0; renderDrill(); break;
       case 'drill-more':  extendDrill(); break;
       case 'sync-save': {
         var tk = ($('#gh-token').value || '').trim();
