@@ -214,9 +214,14 @@
         <span class="px-3 py-1 rounded-lg text-xs font-extrabold bg-indigo-50 text-indigo-700 border border-indigo-200" id="task-day-badge">本日のタスク</span>
         <span class="text-xs text-slate-500">解答済み <strong class="text-slate-800" id="answered-count">0</strong> / <strong class="text-slate-800" id="total-count">3</strong></span>
       </div>
-      <div class="flex items-center gap-2 bg-slate-50 px-3.5 py-1.5 rounded-xl border border-slate-200 font-mono text-base font-bold">
-        <i class="ph-bold ph-timer text-amber-500" aria-hidden="true"></i>
-        <span id="timer-display" class="text-slate-700" role="timer">00:00</span>
+      <div class="flex items-center gap-2">
+        <button type="button" data-action="reroll" class="px-3 py-1.5 rounded-lg text-xs font-bold border border-slate-300 bg-white hover:bg-indigo-50 hover:text-indigo-700 transition">
+          <i class="ph-bold ph-arrows-clockwise mr-1" aria-hidden="true"></i>別の問題に変える
+        </button>
+        <div class="flex items-center gap-2 bg-slate-50 px-3.5 py-1.5 rounded-xl border border-slate-200 font-mono text-base font-bold">
+          <i class="ph-bold ph-timer text-amber-500" aria-hidden="true"></i>
+          <span id="timer-display" class="text-slate-700" role="timer">00:00</span>
+        </div>
       </div>
     </div>
     <div class="mt-3 h-2 rounded-full bg-slate-100 overflow-hidden">
@@ -1033,6 +1038,70 @@
       keys:[['if I understand correctly','if I\u2019m not mistaken'],['was supposed to be']], tip:'やわらかい確認は If I understand correctly / If I\u2019m not mistaken。',
       vocab:[{p:'If I understand correctly', m:'私の理解が正しければ'},{p:'be supposed to', m:'〜のはずだった'}] },
 
+    // ===== Phase 2 追加 =====
+    { id:'t71', cat:'p2purpose', len:'medium', jp:'先日お願いした件について、進捗をお伺いしたくご連絡しました。', en:"I am writing to follow up on the request I made the other day.",
+      keys:[['i am writing to','i\u2019m writing to'],['follow up on','check on']], tip:'催促は chase ではなく follow up on が標準です。',
+      vocab:[{p:'follow up on', m:'（依頼の）その後を尋ねる'}] },
+    { id:'t72', cat:'p2purpose', len:'long', jp:'添付の資料をご確認のうえ、必要な修正があればお知らせいただけますでしょうか。', en:"Could you review the attached document and let me know if any changes are needed?",
+      keys:[['review','look over','check'],['attached'],['let me know']], tip:'「添付の」は attached。attachment file は重複表現です。',
+      vocab:[{p:'the attached document', m:'添付の資料'}] },
+    { id:'t73', cat:'p2register', len:'medium', jp:'ご対応いただきありがとうございました。大変助かりました。', en:"Thank you for taking care of it. It was a great help.",
+      keys:[['thank you for','i appreciate'],['taking care of','handling','looking into']], tip:'「ご対応」は correspondence ではなく take care of / handle。',
+      vocab:[{p:'take care of it', m:'対応する'}] },
+    { id:'t74', cat:'p2register', len:'medium', jp:'恐れ入りますが、期限を1週間延ばしていただくことは可能でしょうか。', en:"I am afraid I must ask whether the deadline could be extended by one week.",
+      keys:[['i am afraid','i\u2019m afraid','would it be possible'],['extended','extend','push back']], tip:'丁寧な切り出しは I am afraid / Would it be possible。',
+      vocab:[{p:'I am afraid ...', m:'恐れ入りますが'}] },
+    { id:'t75', cat:'p2position', len:'medium', jp:'私はどちらかといえば後者の意見に賛成です。', en:"I tend to agree with the second view.",
+      keys:[['tend to agree','lean toward','i agree with']], tip:'「どちらかといえば」は tend to / lean toward。',
+      vocab:[{p:'tend to agree with', m:'どちらかといえば賛成だ'}] },
+    { id:'t76', cat:'p2position', len:'long', jp:'この問題に唯一の正解はないと思いますが、私は前者を支持します。', en:"I do not think there is a single right answer here, but I would support the former.",
+      keys:[['i do not think','i don\u2019t think'],['support','side with','favor'],['the former']], tip:'「前者」は the former、「後者」は the latter。',
+      vocab:[{p:'the former / the latter', m:'前者 / 後者'}] },
+    { id:'t77', cat:'p2engage', len:'medium', jp:'この点についてはアヤさんと同意見です。', en:"I share Aya's view on this point.",
+      keys:[['share','agree with'],['view','opinion','point']], tip:'「同意見です」は share one\u2019s view。same opinion は直訳的です。',
+      vocab:[{p:'share someone\u2019s view', m:'同意見である'}] },
+    { id:'t78', cat:'p2engage', len:'long', jp:'先ほどの投稿にあった懸念はもっともですが、別の見方もできると思います。', en:"The concern raised in the earlier post is valid, but I think there is another way to look at it.",
+      keys:[['raised','mentioned'],['valid','fair'],['another way to look','a different perspective']], tip:'他者の意見への言及は raised / mentioned で受けます。',
+      vocab:[{p:'the concern raised', m:'挙げられた懸念'},{p:'another way to look at it', m:'別の見方'}] },
+    { id:'t79', cat:'p2support', len:'medium', jp:'その根拠として、昨年の調査結果が挙げられます。', en:"As evidence, we can point to last year's survey results.",
+      keys:[['as evidence','one piece of evidence'],['point to','cite']], tip:'根拠を示すときは point to / cite。',
+      vocab:[{p:'point to ...', m:'（根拠として）〜を挙げる'}] },
+    { id:'t80', cat:'p2support', len:'long', jp:'たとえば私の高校では、この制度を導入した結果、遅刻が半分に減りました。', en:"For example, at my high school, tardiness dropped by half after this system was introduced.",
+      keys:[['for example','for instance'],['dropped by half','halved','fell by half']], tip:'「半分に減った」は dropped by half。',
+      vocab:[{p:'drop by half', m:'半分に減る'}] },
+    { id:'t81', cat:'p2cohesion', len:'medium', jp:'そうは言っても、費用の問題が残ります。', en:"Even so, the issue of cost remains.",
+      keys:[['even so','that said','still','nevertheless']], tip:'「そうは言っても」は Even so / That said。',
+      vocab:[{p:'Even so', m:'そうは言っても'}] },
+    { id:'t82', cat:'p2cohesion', len:'long', jp:'まず費用の面から述べ、次に時間の面について触れたいと思います。', en:"First, I would like to address the cost, and then turn to the question of time.",
+      keys:[['first'],['then','next'],['turn to','move on to']], tip:'話題の切り替えは turn to / move on to。',
+      vocab:[{p:'turn to ...', m:'（次の話題に）移る'}] },
+
+    // ===== Phase 3 追加 =====
+    { id:'t83', cat:'p3tone', len:'medium', jp:'（同僚へ）その締切、正直きついと思う。', en:"Honestly, that deadline feels pretty tight.",
+      keys:[['honestly','to be honest'],['tight']], tip:'「きつい」は hard より tight が日程には自然です。',
+      vocab:[{p:'a tight deadline', m:'厳しい締切'}] },
+    { id:'t84', cat:'p3tone', len:'medium', jp:'（取引先へ）その締切ですと、品質の担保が難しくなります。', en:"With that timeline, it would be difficult to ensure the quality we aim for.",
+      keys:[['with that timeline','given that schedule'],['ensure','maintain','guarantee']], tip:'相手を責めずに条件を主語にすると角が立ちません。',
+      vocab:[{p:'ensure the quality', m:'品質を担保する'}] },
+    { id:'t85', cat:'p3concise', len:'short', jp:'（冗長を避けて）多数の参加者が出席しました。', en:"Many participants attended.",
+      keys:[['many participants','a lot of participants']], tip:'a large number of は many で足ります。',
+      vocab:[{p:'a large number of → many', m:'冗長表現の簡潔化'}] },
+    { id:'t86', cat:'p3concise', len:'medium', jp:'（冗長を避けて）その件については、後日改めてご連絡差し上げる予定です。', en:"I will get back to you on that later.",
+      keys:[['get back to you','follow up'],['later','soon']], tip:'日本語の丁寧さをそのまま訳すと英語では冗長になります。',
+      vocab:[{p:'get back to you on that', m:'その件は改めて連絡する'}] },
+    { id:'t87', cat:'p3syntax', len:'medium', jp:'締切が近いので、今夜中に終わらせるつもりです。', en:"With the deadline approaching, I plan to finish it tonight.",
+      keys:[['with the deadline approaching','since the deadline','as the deadline']], tip:'With + 名詞 + -ing で理由を簡潔に示せます。',
+      vocab:[{p:'With ... approaching', m:'〜が近いので（付帯状況）'}] },
+    { id:'t88', cat:'p3syntax', len:'long', jp:'去年入社した田中さんが、このプロジェクトを担当しています。', en:"Tanaka, who joined the company last year, is in charge of this project.",
+      keys:[['who joined'],['in charge of','responsible for']], tip:'固有名詞の補足説明は非制限用法の関係詞（コンマ + who）。',
+      vocab:[{p:', who ...,', m:'（非制限用法の関係詞）'},{p:'in charge of', m:'〜を担当している'}] },
+    { id:'t89', cat:'p3hedge', len:'medium', jp:'一概にそうとは言い切れないと思います。', en:"I would not say that is always the case.",
+      keys:[['would not say','wouldn\u2019t say'],['always the case','necessarily']], tip:'断定回避は I would not say / not necessarily。',
+      vocab:[{p:'I would not say ...', m:'〜とは言い切れない'}] },
+    { id:'t90', cat:'p3hedge', len:'long', jp:'私の記憶違いかもしれませんが、締切は先週だったように思います。', en:"I may be remembering it wrong, but I believe the deadline was last week.",
+      keys:[['i may be','i might be','if i remember correctly'],['i believe','i think']], tip:'自分の記憶に留保を付けると角が立ちません。',
+      vocab:[{p:'I may be remembering it wrong', m:'私の記憶違いかもしれませんが'}] },
+
     { id:'t18', cat:'idiom', len:'long', jp:'ずっと気になっていたお店にやっと行けました。並んだ甲斐がありましたね。', en:"I finally made it to the restaurant I'd been curious about. It was worth the wait in line.",
       keys:[['finally','made it'],['worth the wait','worth it']], tip:'「甲斐があった」は worth it / worth the wait。',
       vocab:[{p:'worth the wait', m:'待った甲斐があった'},{p:'made it to', m:'（やっと）行けた'}] }
@@ -1087,9 +1156,13 @@
     return pool[seed % n];
   }
 
+  var rerollAvoid = [];        // 「別の問題に変える」で外した問題
+
   function buildRound(dateKey, round) {
     var sess = state.sessions[dateKey];
     var taken = sess ? sess.items.map(function (it) { return it.qid; }) : [];
+    taken = taken.concat(rerollAvoid);
+    if (sess && sess.skipped) taken = taken.concat(sess.skipped);
     var seed = hashStr(dateKey) + round * 7;
 
     // 単元カバレッジにもとづいて出題する（未習の単元 → 弱点の単元 の順）
@@ -1111,18 +1184,20 @@
     if (!fp.length) fp = freePool();
     if (!tp.length) tp = trPool();
 
-    var f = pickByUnit(fp, rot, used);
-    used[f.id] = 1;
-    var t1 = pickByUnit(tp, rot, used);
-    used[t1.id] = 1;
+    var roundUsed = {};
+    var f = pickByUnit(fp, rot, used, roundUsed);
+    used[f.id] = 1; roundUsed[f.id] = 1;
+    var t1 = pickByUnit(tp, rot, used, roundUsed);
+    used[t1.id] = 1; roundUsed[t1.id] = 1;
     // 2問目は別単元を優先する
     var rot2 = rot.filter(function (u) { return u !== t1.cat; }).concat([t1.cat]);
-    var t2 = pickByUnit(tp, rot2, used);
+    var t2 = pickByUnit(tp, rot2, used, roundUsed);
 
+    var seen = usedIds();
     return [
-      { qid: f.id,  type: 'free',      answer: '', score: null, round: round },
-      { qid: t1.id, type: 'translate', answer: '', score: null, round: round },
-      { qid: t2.id, type: 'translate', answer: '', score: null, round: round }
+      { qid: f.id,  type: 'free',      answer: '', score: null, round: round, again: !!seen[f.id] },
+      { qid: t1.id, type: 'translate', answer: '', score: null, round: round, again: !!seen[t1.id] },
+      { qid: t2.id, type: 'translate', answer: '', score: null, round: round, again: !!seen[t2.id] }
     ];
   }
 
@@ -1472,10 +1547,25 @@
       '  },\n' +
       '  "summary": "全体講評を日本語で1〜2文",\n' +
       '  "corrected": "学習者の意図を保ったまま自然な英語に書き直した全文",\n' +
-      '  "issues": [{"original": "学習者の原文から該当箇所を抜粋", "suggestion": "修正後の表現", "reason": "なぜそうなるかを日本語で1文"}],\n' +
+      '  "issues": [{\n' +
+      '    "original": "学習者の原文から該当箇所をそのまま抜粋",\n' +
+      '    "suggestion": "修正後の表現",\n' +
+      '    "type": "文法 / 語法・コロケーション / 語彙選択 / 冠詞・前置詞 / 時制 / レジスター / 直訳 のいずれか1つ",\n' +
+      '    "why_wrong": "学習者が書いた表現の何が問題かを日本語で1〜2文。その語が実際にどういう意味・場面で使われるかに触れ、今回の文脈とどうズレているかを具体的に書く",\n' +
+      '    "why_better": "修正案がなぜ適切かを日本語で1文"\n' +
+      '  }],\n' +
       '  "good": ["よくできている点を日本語で。最大3件"],\n' +
       '  "vocab": [{"p": "この解答から学ぶべき英語表現", "m": "日本語の意味"}]\n' +
       '}\n' +
+      '【指摘の書き方】issues の why_wrong は、修正案の説明ではなく' +
+      '「学習者が書いた表現のどこが問題か」を書いてください。次を必ず守ってください。\n' +
+      '- 「不自然だから」「その方がよく使われるから」だけで終わらせない。何が不自然なのかを説明する\n' +
+      '- 学習者が使った語が実際に持つ意味や典型的な使われ方を示し、今回の文脈とどうズレるかを述べる\n' +
+      '  例:「tell は情報を伝える相手が必要なので tell me until のように期限を続けられません」\n' +
+      '  例:「separate は物を分離する語で、費用を人数で分担する意味にはなりません」\n' +
+      '- 文法上は正しいが不自然な場合は、その表現がネイティブにどう響くか（硬い・古い・別の意味に取れる等）を書く\n' +
+      '- 日本語の直訳が原因の場合は、元になっている日本語表現を明示する\n' +
+      '- 学習者の書いた語が文脈上まったく問題ない場合は、その箇所を issues に入れない\n\n' +
       'vocab では、同じ核を持つ表現を複数の形で書き分けないでください。核となる部分を1つだけ挙げてください。\n' +
       '  悪い例: 「be tied up」と「tied up」を別々に挙げる → 「tied up」だけにする\n' +
       '  悪い例: 「have until ...」と「have until X to do」を別々に挙げる → 「have until」だけにする\n' +
@@ -1576,7 +1666,15 @@
           score: fromBands !== null ? fromBands : Math.max(0, Math.min(100, Math.round(Number(j.score) || 0))),
           summary: String(j.summary || ''),
           corrected: String(j.corrected || ''),
-          issues: Array.isArray(j.issues) ? j.issues.slice(0, 5) : [],
+          issues: Array.isArray(j.issues) ? j.issues.slice(0, 5).map(function (x) {
+            return {
+              original: String((x && x.original) || ''),
+              suggestion: String((x && x.suggestion) || ''),
+              type: String((x && x.type) || ''),
+              why_wrong: String((x && (x.why_wrong || x.reason)) || ''),
+              why_better: String((x && x.why_better) || '')
+            };
+          }) : [],
           good: Array.isArray(j.good) ? j.good.slice(0, 3) : [],
           vocab: Array.isArray(j.vocab) ? j.vocab.slice(0, 4).filter(function (v) { return v && v.p; }) : []
         };
@@ -2147,16 +2245,47 @@
     });
   }
 
-  // 指定単元の未出題問題を取り出す。無ければ単元を問わず未出題から。
-  function pickByUnit(pool, unitIds, used) {
-    var i, j;
+  // 各問題を最後に出した「順番」。同じ日に何セットも解いても正しく古い順が出る。
+  function lastUsedMap() {
+    var m = {}, i = 0;
+    Object.keys(state.sessions).sort().forEach(function (d) {
+      state.sessions[d].items.forEach(function (it) { m[it.qid] = ++i; });
+    });
+    return m;
+  }
+
+  // 指定単元の未出題問題を取り出す。
+  // すべて出題済みの場合は「最後に出したのが一番古いもの」を選ぶ（同じ問題の連続を防ぐ）。
+  function pickByUnit(pool, unitIds, used, roundUsed) {
+    roundUsed = roundUsed || {};
+    var i;
     for (i = 0; i < unitIds.length; i++) {
       var cands = pool.filter(function (q) { return q.cat === unitIds[i] && !used[q.id]; });
       if (cands.length) return cands[0];
     }
     var rest = pool.filter(function (q) { return !used[q.id]; });
     if (rest.length) return rest[0];
-    return pool[0];
+
+    // ここから先は再利用。最後に出したのが古い順に並べる。
+    var last = lastUsedMap();
+    function byAge(list) {
+      return list.slice().sort(function (a, b) {
+        var la = last[a.id] || 0, lb = last[b.id] || 0;
+        if (la !== lb) return la - lb;
+        return String(a.id) < String(b.id) ? -1 : 1;
+      });
+    }
+    // このセットで既に出した問題は、再利用時でも必ず避ける
+    var notThisRound = pool.filter(function (q) { return !roundUsed[q.id]; });
+    if (!notThisRound.length) notThisRound = pool;
+    var fresh = notThisRound.filter(function (q) { return !used[q.id]; });
+    var base = fresh.length ? fresh : notThisRound;
+    var sorted = byAge(base);
+    for (i = 0; i < unitIds.length; i++) {
+      var c = sorted.filter(function (q) { return q.cat === unitIds[i]; });
+      if (c.length) return c[0];
+    }
+    return sorted[0];
   }
 
 
@@ -2390,7 +2519,31 @@
     swing:['swings','swung','swinging'], stick:['sticks','stuck','sticking'], hang:['hangs','hung','hanging']
   };
 
+  // 登録側が活用形（comes / stopped）でも原形に戻して比較できるようにする
+  function baseForms(w) {
+    var out = [w];
+    if (/ies$/.test(w) && w.length > 4) out.push(w.slice(0, -3) + 'y');
+    if (/es$/.test(w) && w.length > 4) out.push(w.slice(0, -2));
+    if (/s$/.test(w) && !/ss$/.test(w) && w.length > 3) out.push(w.slice(0, -1));
+    if (/ing$/.test(w) && w.length > 5) { out.push(w.slice(0, -3)); out.push(w.slice(0, -3) + 'e'); }
+    if (/ed$/.test(w) && w.length > 4) { out.push(w.slice(0, -2)); out.push(w.slice(0, -1)); }
+    if (/([^aeiou])\1ed$/.test(w)) out.push(w.slice(0, -3));
+    if (/([^aeiou])\1ing$/.test(w)) out.push(w.slice(0, -4));
+    return out;
+  }
+
   function inflect(w) {
+    var seen = {}, all = [];
+    baseForms(w).forEach(function (b) {
+      if (!b) return;
+      [b].concat(IRREGULAR[b] || [], regularForms(b)).forEach(function (x) {
+        if (x && !seen[x]) { seen[x] = 1; all.push(x); }
+      });
+    });
+    return all;
+  }
+
+  function regularForms(w) {
     var out = [w], i;
     if (IRREGULAR[w]) { for (i = 0; i < IRREGULAR[w].length; i++) out.push(IRREGULAR[w][i]); return out; }
     if (/e$/.test(w)) { out.push(w + 'd', w + 's', w.slice(0, -1) + 'ing'); }
@@ -2865,6 +3018,44 @@
     }
   }
 
+
+  // いま表示されている未採点の問題を捨てて、別の問題に入れ替える
+  function rerollRound() {
+    var sess = ensureSession(TODAY);
+    var pend = pendingItems(sess);
+    if (!pend.length || preparing) return;
+
+    var round = pend[0].item.round || 1;
+    var avoid = pend.map(function (p) { return p.item.qid; });
+    sess.items = sess.items.filter(function (it) { return typeof it.score === 'number'; });
+
+    // 一度外した問題は、その日のうちは出さない
+    sess.skipped = (sess.skipped || []).concat(avoid).filter(function (v, i, a) { return a.indexOf(v) === i; });
+
+    if (personalizedOn()) {
+      preparing = true;
+      showPreparing(true);
+      prepareRound(TODAY, round).then(function (items) {
+        sess.rounds = Math.max(sess.rounds, round);
+        sess.items = sess.items.concat(items);
+        save();
+        preparing = false;
+        renderQuestions();
+        notePersonalized();
+      });
+      return;
+    }
+
+    rerollAvoid = avoid;
+    var items = buildRound(TODAY, round);
+    rerollAvoid = [];
+    sess.rounds = Math.max(sess.rounds, round);
+    sess.items = sess.items.concat(items);
+    save();
+    renderQuestions();
+    startTimer(items.length * 180);
+  }
+
   function renderQuestions() {
     var sess = ensureSession(TODAY);
     var box = $('#question-list');
@@ -2879,6 +3070,7 @@
         '<span class="text-xs font-extrabold px-2 py-1 rounded border ' + (item.type === 'free' ? 'bg-indigo-50 text-indigo-700 border-indigo-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200') + '">' +
         (item.type === 'free' ? '自由英作文' : '和文英訳') + '</span>' + lenChip(q.len) +
         '<span class="text-[11px] font-bold px-2 py-0.5 rounded bg-violet-50 text-violet-700 border border-violet-200">' + esc(unitName(q.cat)) + '</span>' +
+        (item.again ? '<span class="text-[11px] font-bold px-2 py-0.5 rounded bg-amber-100 text-amber-700">再出題</span>' : '') +
         (item.round > 1 ? '<span class="text-[11px] text-slate-400 font-bold">第' + item.round + 'セット</span>' : '') + '</div>';
 
       var body;
@@ -2978,11 +3170,21 @@
   function secIssues(item) {
     if (!item.ai || !item.ai.issues || !item.ai.issues.length) return '';
     return '<div class="mt-5"><p class="text-xs font-extrabold text-slate-500 mb-2">3. 指摘（' + item.ai.issues.length + '件）</p>' +
-      '<div class="space-y-2">' + item.ai.issues.map(function (is) {
-        return '<div class="bg-white border border-slate-200 rounded-xl p-3">' +
+      '<div class="space-y-3">' + item.ai.issues.map(function (is) {
+        var why = is.why_wrong || is.reason || '';
+        return '<div class="bg-white border border-slate-200 rounded-xl p-4">' +
+          '<div class="flex flex-wrap items-center gap-2 mb-2">' +
+            (is.type ? '<span class="text-[11px] font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-600 border border-slate-200">' + esc(is.type) + '</span>' : '') +
+          '</div>' +
           '<p style="font-size:1.0625rem;line-height:1.8"><span class="diff-del">' + esc(is.original) + '</span>' +
           '<span class="text-slate-400 mx-2">→</span><span class="diff-add">' + esc(is.suggestion) + '</span></p>' +
-          (is.reason ? '<p class="text-sm text-slate-600 mt-1.5">' + esc(is.reason) + '</p>' : '') + '</div>';
+          (why ? '<div class="mt-3 rounded-lg bg-rose-50 border border-rose-100 p-3">' +
+                 '<p class="text-[11px] font-extrabold text-rose-700 mb-1">なぜ元の表現では不適切か</p>' +
+                 '<p class="text-sm text-slate-700" style="line-height:1.8">' + esc(why) + '</p></div>' : '') +
+          (is.why_better ? '<div class="mt-2 rounded-lg bg-emerald-50 border border-emerald-100 p-3">' +
+                 '<p class="text-[11px] font-extrabold text-emerald-700 mb-1">修正案が適切な理由</p>' +
+                 '<p class="text-sm text-slate-700" style="line-height:1.8">' + esc(is.why_better) + '</p></div>' : '') +
+          '</div>';
       }).join('') + '</div></div>';
   }
 
@@ -3235,7 +3437,7 @@
           var q = questionOf(it); if (!q) return false;
           var ai = it.ai || {};
           var hay = [it.answer, q.jp || q.title, q.en || q.casual, ai.summary, ai.corrected,
-            (ai.issues || []).map(function (x) { return [x.original, x.suggestion, x.reason].join(' '); }).join(' '),
+            (ai.issues || []).map(function (x) { return [x.original, x.suggestion, x.type, x.why_wrong, x.why_better, x.reason].join(' '); }).join(' '),
             (ai.good || []).join(' '),
             mergeVocab(q, it).map(function (v) { return v.p + ' ' + v.m; }).join(' ')].join(' ').toLowerCase();
           return hay.indexOf(kw) !== -1;
@@ -3351,7 +3553,7 @@
     // 末尾のプレースホルダ（X / sth / doing / one's など）と、その直前の to を落とす
     while (parts.length > 1) {
       var last = parts[parts.length - 1];
-      if (PLACEHOLDERS[last] || /^[a-z]$/.test(last)) {
+      if (PLACEHOLDERS[last] || (/^[a-z]$/.test(last) && last !== 'a' && last !== 'i')) {
         parts.pop();
         if (parts.length > 1 && parts[parts.length - 1] === 'to') parts.pop();
       } else break;
@@ -3369,11 +3571,27 @@
   function matchesExpression(answerNorm, alt) {
     var parts = coreExpression(alt);
     if (!parts.length) return false;
-    var pat = parts.map(function (w, i) {
-      if (PRONOUNS[w]) return PRONOUN_GROUP;
-      if (i === 0) return '(?:' + inflect(w).map(escRe).join('|') + ')';
-      return escRe(w);
-    }).join('\\s+');
+
+    // 人称の位置は「別の人称」でも「名詞（1〜3語）」でも、無くてもよいことにする。
+    //   let me know / let you know / let Yuki know / pick up / pick my friend up
+    // 活用を許すのは最初の「人称以外の語」。it comes to → The total came to も通す。
+    var firstContent = -1;
+    for (var k = 0; k < parts.length; k++) {
+      if (!PRONOUNS[parts[k]]) { firstContent = k; break; }
+    }
+
+    var pat = '';
+    parts.forEach(function (w, i) {
+      var last = (i === parts.length - 1);
+      if (PRONOUNS[w]) {
+        pat += "(?:[a-z0-9']+\\s+){0,3}";
+        return;
+      }
+      pat += (i === firstContent) ? '(?:' + inflect(w).map(escRe).join('|') + ')' : escRe(w);
+      if (!last) pat += '\\s+';
+    });
+    pat = pat.replace(/\\s\+$/, '');
+
     try {
       return new RegExp('(^|\\s)' + pat + '(\\s|$)').test(answerNorm);
     } catch (e) {
@@ -3710,7 +3928,8 @@
     raw.forEach(function (w) {
       var lw = w.toLowerCase().replace(/^-+|-+$/g, '');
       if (!lw) { more = true; return; }
-      if (PLACEHOLDERS[lw] || /^[a-z]$/.test(lw)) { more = true; return; }
+      // a と I は1文字だが実在の語なので落とさない
+      if (PLACEHOLDERS[lw] || (/^[a-z]$/.test(lw) && lw !== 'a' && lw !== 'i')) { more = true; return; }
       parts.push(lw);
     });
     // プレースホルダを落とした結果、末尾に取り残された to は表示しない
@@ -4275,6 +4494,7 @@
       case 'submit':       submitAll(); break;
       case 'more':         moreQuestions(); break;
       case 'load-sample':  loadSample(); break;
+      case 'reroll':       rerollRound(); break;
       case 'tag':          setTag(el.getAttribute('data-id'), el.getAttribute('data-type'), el.getAttribute('data-phrase'), el.getAttribute('data-meaning')); break;
       case 'filter':       state.filter = el.getAttribute('data-cat'); renderBank(); break;
       case 'chart':        chartMode = el.getAttribute('data-mode'); renderChart(); break;
