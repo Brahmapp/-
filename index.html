@@ -252,6 +252,7 @@
     <div>
       <div class="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-full bg-indigo-50 text-indigo-700 text-xs font-bold mb-1">添削完了・分析レポート</div>
       <h2 class="text-xl font-extrabold text-slate-900" id="review-title">本日の結果</h2>
+      <p id="review-compare" class="hidden text-sm text-slate-600 mt-2"></p>
       <p class="text-xs text-slate-500 mt-1" id="review-mode-note"></p>
       <details class="mt-2 group">
         <summary class="cursor-pointer text-xs font-bold text-indigo-600 hover:text-indigo-800">採点基準について</summary>
@@ -1145,6 +1146,107 @@
       vocab:[{p:'worth the wait', m:'待った甲斐があった'},{p:'made it to', m:'（やっと）行けた'}] }
   ];
 
+
+  // 各自由英作文の「その場面の中で実際に言う一文」。
+  // 和文英訳2問 → 同じ場面の自由英作文、という流れを成立させるための素材。
+  var PRE_SETS = {
+    f1: [
+      { jp:'予定通り今週の土曜に出発しようと思ってる。', en:"I'm planning to head out this Saturday as scheduled.", keys:[['head out','leave','get going'],['as scheduled','as planned']] },
+      { jp:'ガソリン代と高速代、割り勘にしない？', en:'Would you mind splitting the gas and tolls?', keys:[['split','share'],['gas','tolls']]} ],
+    f2: [
+      { jp:'今日の午後の会議に出られそうにない。', en:"I'm not going to be able to make it this afternoon.", keys:[['make it','attend','be there']] },
+      { jp:'あとで議事録を送ってもらえますか。', en:'Could you send me the notes afterwards?', keys:[['send','share'],['notes','minutes']]} ],
+    f3: [
+      { jp:'新しい家にはもう慣れた？', en:'Have you settled into the new place yet?', keys:[['settled in','settle into','used to']] },
+      { jp:'落ち着いたら遊びに行きたいな。', en:"I'd love to come over once things calm down.", keys:[['come over','visit','drop by']]} ],
+    f4: [
+      { jp:'先週注文した商品がまだ届いていません。', en:"The item I ordered last week hasn't arrived yet.", keys:[['hasn\u2019t arrived','has not arrived','still waiting']] },
+      { jp:'配送状況を確認していただけますか。', en:'Could you look into the delivery status?', keys:[['look into','check on','track']]} ],
+    f5: [
+      { jp:'急用ができて今夜は行けなくなった。', en:"Something came up and I can't make it tonight.", keys:[['something came up'],['can\u2019t make it','cannot make it']] },
+      { jp:'来週に延ばしてもらえない？', en:'Could we push it back to next week?', keys:[['push it back','reschedule','postpone']]} ],
+    f6: [
+      { jp:'このままだと締切に間に合わないかもしれない。', en:"I'm worried we might not be on track for the deadline.", keys:[['on track','miss the deadline','behind']] },
+      { jp:'タスクを2チームに分けるのはどうでしょう。', en:'What if we split the tasks between two teams?', keys:[['split','divide'],['two teams']]} ],
+    f7: [
+      { jp:'返すのがすっかり遅くなってごめん。', en:"Sorry it took me so long to get your book back.", keys:[['took me so long','so late','held on to']] },
+      { jp:'今週末なら家にいるよ。', en:"I'm around this weekend.", keys:[['i\u2019m around','be home','be at home']]} ],
+    f8: [
+      { jp:'先週共有された資料が見つかりません。', en:"I can't seem to find the file you shared last week.", keys:[['seem to find','can\u2019t find','locate']] },
+      { jp:'リンクをもう一度送ってもらえますか。', en:'Could you send me the link again?', keys:[['send','resend'],['link']]} ],
+    f9: [
+      { jp:'久しぶり、元気にしてた？', en:"It's been a while — how have you been?", keys:[['been a while','long time']] },
+      { jp:'近いうちにご飯でも行こうよ。', en:'We should grab dinner and catch up sometime.', keys:[['catch up','grab','get together']]} ],
+    f10: [
+      { jp:'金曜の締切には間に合いそうにありません。', en:"I don't think I'm going to make Friday's deadline.", keys:[['going to make','won\u2019t make','be able to']] },
+      { jp:'来週の水曜まで待っていただけますか。', en:'Could we push it to next Wednesday?', keys:[['push it','extend','until wednesday','by wednesday']]} ],
+    f11: [
+      { jp:'締切を過ぎてしまい申し訳ありません。', en:'I apologize for missing the deadline.', keys:[['apologize','i\u2019m sorry','my apologies']] },
+      { jp:'まだ登録は可能でしょうか。', en:'Would it still be possible to enroll?', keys:[['still be possible','still possible','still enroll']]} ],
+    f12: [
+      { jp:'私は完全に対面に戻すべきではないと思います。', en:"I don't think we should go fully back to in-person classes.", keys:[['i don\u2019t think','i believe','in my view']] },
+      { jp:'たとえば通学に1日2時間かかっていました。', en:'For example, I spent two hours a day commuting.', keys:[['for example','for instance'],['commuting','commute']]} ],
+    f13: [
+      { jp:'経済学部2年の佐藤と申します。', en:"I'm a second-year student in the Economics department.", keys:[['i\u2019m a','i am a','second-year']] },
+      { jp:'発行にはどのくらいかかりますか。', en:'How long does it usually take to process?', keys:[['how long'],['process','take']]} ],
+    f14: [
+      { jp:'（同僚へ）来週の打ち合わせ、再来週にずらせない？', en:"Any chance we could push next week's meeting to the week after?", keys:[['push','bump','move']] },
+      { jp:'（取引先へ）ご都合のよい日をお知らせください。', en:'Please let me know which dates would be convenient for you.', keys:[['let me know'],['convenient','work for you']]} ],
+    f15: [
+      { jp:'金曜の会議は中止になりました。', en:"Friday's meeting has been canceled.", keys:[['canceled','cancelled','called off']] },
+      { jp:'参加できない人が多いためです。', en:'That\u2019s because several people are unavailable.', keys:[['because','since'],['unavailable','can\u2019t make it']]} ],
+    f16: [
+      { jp:'6時には家を出るつもり。', en:"I'm planning to head out around six.", keys:[['head out','leave','get going']] },
+      { jp:'途中で駅に寄って拾っていくよ。', en:"I'll swing by the station to pick you up.", keys:[['swing by','stop by'],['pick','pick up']]} ],
+    f17: [
+      { jp:'宿代とガソリン代は立て替えておいた。', en:'I covered the hotel and the gas.', keys:[['covered','paid for','fronted']] },
+      { jp:'一人あたり8000円くらいになる。', en:'It comes to about 8,000 yen each.', keys:[['comes to','works out to'],['each','per person']]} ],
+    f18: [
+      { jp:'せっかくチケットを取ったのに中止になった。', en:'After all the trouble I went through to get tickets, it was canceled.', keys:[['all the trouble','went to the trouble']] },
+      { jp:'代わりに別の週末に集まらない？', en:'Want to get together some other weekend instead?', keys:[['get together','meet up'],['instead','some other']]} ],
+    f19: [
+      { jp:'先週からずっとその作業を続けています。', en:"I've been working on it since last week.", keys:[['\u2019ve been working','have been working','has been working'],['since last week']] },
+      { jp:'昨日の時点で半分が終わりました。', en:'As of yesterday, I have finished about half of it.', keys:[['as of yesterday'],['have finished','have completed']]} ],
+    f20: [
+      { jp:'マヤさんの指摘はもっともだと思います。', en:'I think Maya makes a good point.', keys:[['makes a good point','raises a good point']] },
+      { jp:'ただ、その見方は浅い関与を見落としています。', en:'However, that view overlooks how shallow the involvement often is.', keys:[['however','that said'],['overlooks','misses']]} ],
+    f21: [
+      { jp:'高校生のアルバイトは認めるべきだと思います。', en:'I think high school students should be allowed to work part-time.', keys:[['i think','i believe','should be allowed']] },
+      { jp:'たとえば2年生のときカフェで働きました。', en:'For example, I worked at a cafe in my second year.', keys:[['for example','for instance'],['worked at']]} ],
+    f22: [
+      { jp:'まず在宅勤務は明らかに時間の節約になります。', en:'To begin with, working from home clearly saves time.', keys:[['to begin with','first'],['saves time','save time']] },
+      { jp:'総合的に見ると、両方を組み合わせるのがよいと思います。', en:'On balance, I think a mix of both works better.', keys:[['on balance','overall'],['a mix','both']]} ],
+    f23: [
+      { jp:'報告書を仕上げたうえで、上司に送りました。', en:'Having finished the report, I sent it to my manager.', keys:[['having finished','after finishing']] },
+      { jp:'上司は出張中でした。', en:'My manager was away on a business trip.', keys:[['away on','on a business trip']]} ],
+    f24: [
+      { jp:'私が見落としているかもしれませんが。', en:'I might be missing something here.', keys:[['might be missing','may be missing','may well be']] },
+      { jp:'手が空いたときに確認していただけますか。', en:'Could you take another look when you get a chance?', keys:[['take another look','review','check'],['get a chance','have a moment']]} ]
+  };
+
+  // 場面つき和文英訳を、通常の問題と同じ形に展開する
+  var PRE_POOL = (function () {
+    var out = [];
+    Object.keys(PRE_SETS).forEach(function (fid) {
+      var parent = null;
+      for (var i = 0; i < FREE_POOL.length; i++) { if (FREE_POOL[i].id === fid) { parent = FREE_POOL[i]; break; } }
+      if (!parent) return;
+      PRE_SETS[fid].forEach(function (p, i) {
+        out.push({
+          id: fid + '-p' + (i + 1), parent: fid, cat: parent.cat, len: 'short',
+          jp: p.jp, en: p.en, keys: p.keys,
+          tip: 'このあと書く場面「' + parent.title + '」の中で使う一文です。',
+          vocab: []
+        });
+      });
+    });
+    return out;
+  })();
+
+  function preItemsFor(fid) {
+    return PRE_POOL.filter(function (q) { return q.parent === fid; });
+  }
+
   var SEED_BANK = [
     { id:'b1', phrase:'push back / reschedule for', meaning:'予定を後ろに延期する / 〜に日程変更する', category:'recall', next:'今日 (SRS Due)', streak:0 },
     { id:'b2', phrase:'reply to me by [date]',      meaning:'〜までに返信する（期限のby / 自動詞reply to）', category:'recall', next:'今日 (SRS Due)', streak:0 },
@@ -1226,17 +1328,27 @@
 
     var roundUsed = {};
 
-    // 同じ単元でそろえる。和文英訳2問が自由英作文の足場になるため。
-    var t1 = pickByUnit(tp, rot, used, roundUsed);
-    used[t1.id] = 1; roundUsed[t1.id] = 1;
-    var unitFirst = [t1.cat].concat(rot);
-    var t2 = pickByUnit(tp, unitFirst, used, roundUsed);
-    used[t2.id] = 1; roundUsed[t2.id] = 1;
-    var f = pickByUnit(fp, unitFirst, used, roundUsed);
+    // まず自由英作文（＝その日の場面）を決める
+    var f = pickByUnit(fp, rot, used, roundUsed);
     used[f.id] = 1; roundUsed[f.id] = 1;
 
     var seen = usedIds();
-    // stage 1 = 和文英訳（先に解いて採点する）, stage 2 = 自由英作文
+    // その場面の中で実際に言う一文があれば、それを和文英訳として出す
+    var pre = preItemsFor(f.id);
+    if (pre.length >= 2) {
+      return [
+        { qid: pre[0].id, type: 'translate', answer: '', score: null, round: round, stage: 1, again: !!seen[pre[0].id] },
+        { qid: pre[1].id, type: 'translate', answer: '', score: null, round: round, stage: 1, again: !!seen[pre[1].id] },
+        { qid: f.id,      type: 'free',      answer: '', score: null, round: round, stage: 2, again: !!seen[f.id] }
+      ];
+    }
+
+    // 用意が無い場合は、同じ単元の和文英訳で代用する
+    var unitFirst = [f.cat].concat(rot);
+    var t1 = pickByUnit(tp, unitFirst, used, roundUsed);
+    used[t1.id] = 1; roundUsed[t1.id] = 1;
+    var t2 = pickByUnit(tp, unitFirst, used, roundUsed);
+    used[t2.id] = 1; roundUsed[t2.id] = 1;
     return [
       { qid: t1.id, type: 'translate', answer: '', score: null, round: round, stage: 1, again: !!seen[t1.id] },
       { qid: t2.id, type: 'translate', answer: '', score: null, round: round, stage: 1, again: !!seen[t2.id] },
@@ -1262,7 +1374,7 @@
   }
 
   function questionOf(item) {
-    var pool = item.type === 'free' ? freePool() : trPool();
+    var pool = item.type === 'free' ? freePool() : trPool().concat(PRE_POOL);
     for (var i = 0; i < pool.length; i++) { if (pool[i].id === item.qid) return pool[i]; }
     return null;
   }
@@ -3257,11 +3369,20 @@
       : (sess.rounds > 1 ? '第' + sess.rounds + 'セット' : '本日のタスク');
     var note = $('#stage-note');
     if (note) {
+      var scene = '';
+      if (stg === 1 && pend.length) {
+        var pq = questionOf(pend[0].item);
+        if (pq && pq.parent) {
+          var pf = null;
+          freePool().forEach(function (x) { if (x.id === pq.parent) pf = x; });
+          if (pf) scene = '<br>このあと書く場面: <strong class="text-slate-800">' + esc(pf.title) + '</strong>';
+        }
+      }
       note.innerHTML = rw
         ? '同じ課題をもう一度書きます。添削で指摘された点を意識してください。'
         : stg === 2
-          ? 'さきほどの和文英訳と<strong class="text-slate-700">同じ場面</strong>です。出てきた表現を使って、自分で組み立ててみてください。'
-          : 'まず短い和文英訳から。採点のあと、同じ場面の自由英作文に進みます。';
+          ? 'さきほど訳した2文は、この場面の中で実際に使う文です。それを組み込んで書いてみてください。'
+          : 'まず、この場面の中で使う短い文を2つ訳します。採点のあと、同じ場面の自由英作文に進みます。' + scene;
       note.classList.remove('hidden');
     }
     updateProgress();
@@ -3427,6 +3548,7 @@
   }
 
   function secVocab(item, q, interactive) {
+    if (item.rw) return '';        // 書き直しでは表現の登録をやり直さない
     var list = mergeVocab(q, item);
     if (!list.length) return '';
     var n = item.ai ? '7' : '4';
@@ -3532,11 +3654,35 @@
     if (!sess) return;
 
     var round = latestRound(sess);
-    var shown = sess.items.filter(function (it) { return typeof it.score === 'number' && (it.round || 1) === round; });
+    var inRound = sess.items.filter(function (it) { return typeof it.score === 'number' && (it.round || 1) === round; });
+    var rwItems = inRound.filter(function (it) { return it.rw; });
+    var firstItems = inRound.filter(function (it) { return !it.rw; });
+    // 書き直しがあるときは、書き直しの結果だけを表示する（初回と混ざって二重に見えるため）
+    var isRw = rwItems.length > 0;
+    var shown = isRw ? rwItems : firstItems;
 
-    $('#review-score').textContent = shown.length
-      ? Math.round(shown.reduce(function (a, b) { return a + b.score; }, 0) / shown.length) : '–';
-    $('#review-title').textContent = jpDate(TODAY) + (round > 1 ? ' 第' + round + 'セットの結果' : ' の結果');
+    var avgOf = function (list) {
+      return list.length ? Math.round(list.reduce(function (a, b) { return a + b.score; }, 0) / list.length) : null;
+    };
+    var nowAvg = avgOf(shown);
+    $('#review-score').textContent = nowAvg === null ? '–' : nowAvg;
+    $('#review-title').textContent = jpDate(TODAY) +
+      (isRw ? ' 書き直しの結果' : (round > 1 ? ' 第' + round + 'セットの結果' : ' の結果'));
+
+    // 初回との差を示す
+    var cmp = $('#review-compare');
+    if (cmp) {
+      var firstAvg = avgOf(firstItems);
+      if (isRw && firstAvg !== null && nowAvg !== null) {
+        var diff = nowAvg - firstAvg;
+        cmp.classList.remove('hidden');
+        cmp.innerHTML = '初回 <strong class="text-slate-700">' + firstAvg + '</strong> 点 → 書き直し <strong class="' + scoreColor(nowAvg) + '">' + nowAvg + '</strong> 点' +
+          '（<strong class="' + (diff >= 0 ? 'text-emerald-600' : 'text-rose-600') + '">' + (diff >= 0 ? '+' : '') + diff + '</strong> 点）' +
+          (diff > 0 ? ' — 指摘を反映できています。' : diff === 0 ? ' — 変化なし。指摘をもう一度読んでみてください。' : ' — 下がりました。書き直しで別の問題が出ている可能性があります。');
+      } else {
+        cmp.classList.add('hidden');
+      }
+    }
     $('#today-rounds').textContent = sess.rounds;
 
     // 和文英訳を終えた直後なら、自由英作文への導線を出す
@@ -3649,12 +3795,14 @@
     var keys = Object.keys(state.sessions).sort().reverse();
     if (dateSel !== 'all') keys = keys.filter(function (k) { return k === dateSel; });
 
-    var totalQ = 0, blocks = [];
+    var totalQ = 0, totalRw = 0, blocks = [];
 
     keys.forEach(function (k) {
       var sess = state.sessions[k];
       var items = sess.items.filter(function (it) { return typeof it.score === 'number'; });
       if (typeSel !== 'all') items = items.filter(function (it) { return it.type === typeSel; });
+      var rwCount = items.filter(function (it) { return it.rw; }).length;
+      var initCount = items.length - rwCount;
 
       if (kw) {
         items = items.filter(function (it) {
@@ -3668,9 +3816,12 @@
         });
       }
       if (!items.length) return;
-      totalQ += items.length;
+      totalQ += items.length - items.filter(function (it) { return it.rw; }).length;
+      totalRw += items.filter(function (it) { return it.rw; }).length;
 
-      var avg = Math.round(items.reduce(function (a, b) { return a + b.score; }, 0) / items.length);
+      var firstOnly = items.filter(function (it) { return !it.rw; });
+      var avgSrc = firstOnly.length ? firstOnly : items;
+      var avg = Math.round(avgSrc.reduce(function (a, b) { return a + b.score; }, 0) / avgSrc.length);
       var vocab = [];
       items.forEach(function (it) { var q = questionOf(it); if (q) vocab = vocab.concat(mergeVocab(q, it)); });
       var vseen = {};
@@ -3694,14 +3845,16 @@
       blocks.push('<section>' +
         '<div class="sticky top-16 z-10 flex flex-wrap items-center justify-between gap-3 bg-slate-100/95 backdrop-blur py-2">' +
         '<h3 class="font-extrabold text-slate-900 text-xl">' + jpDate(k) + '</h3>' +
-        '<div class="text-sm text-slate-500">' + items.length + '問 ・ 平均 <strong class="' + scoreColor(avg) + '">' + avg + '</strong> 点 ・ ' + sess.rounds + 'セット</div></div>' +
+        '<div class="text-sm text-slate-500">' + initCount + '問' +
+        (rwCount ? '<span class="text-amber-600">（＋書き直し ' + rwCount + '問）</span>' : '') +
+        ' ・ 平均 <strong class="' + scoreColor(avg) + '">' + avg + '</strong> 点 ・ ' + sess.rounds + 'セット</div></div>' +
         rows + vocabHtml + '</section>');
     });
 
     $('#history-body').innerHTML = blocks.join('');
     $('#history-empty').classList.toggle('hidden', blocks.length > 0);
     $('#history-summary').textContent = blocks.length
-      ? blocks.length + '日分 / ' + totalQ + '問を表示しています。'
+      ? blocks.length + '日分 / ' + totalQ + '問' + (totalRw ? '（＋書き直し ' + totalRw + '問）' : '') + 'を表示しています。'
       : '条件に一致する記録はありません。';
   }
 
@@ -4763,6 +4916,7 @@
 
     function finish() {
       targets.forEach(function (it) {
+        if (it.rw) return;        // 書き直しは表現バンクに影響させない
         var q = questionOf(it);
         if (q && (it.answer || '').trim()) { addVocab(mergeVocab(q, it)); recordMisses(it); }
       });
