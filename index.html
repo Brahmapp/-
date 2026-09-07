@@ -340,6 +340,27 @@
       <button type="button" data-action="filter" data-cat="mastered" class="bank-tab shrink-0 px-3 py-1.5 rounded-lg text-xs font-bold text-slate-600">✅ 定着 (<span data-count="mastered">0</span>)</button>
     </div>
   </div>
+  <div class="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm grid grid-cols-1 sm:grid-cols-2 gap-3">
+    <div>
+      <label for="bank-search" class="block text-xs font-bold text-slate-500 mb-1">キーワード検索（英語・日本語どちらでも）</label>
+      <input id="bank-search" type="search" placeholder="例: stop by / 立ち寄る"
+        class="w-full bg-white border-2 border-slate-200 focus:border-indigo-500 rounded-xl px-3 py-2.5 text-base text-slate-900 focus:outline-none transition">
+    </div>
+    <div>
+      <label for="bank-sort" class="block text-xs font-bold text-slate-500 mb-1">並び替え</label>
+      <select id="bank-sort" class="w-full bg-white border-2 border-slate-200 focus:border-indigo-500 rounded-xl px-3 py-2.5 text-base font-semibold text-slate-900 focus:outline-none transition">
+        <option value="priority">優先度（未定着・誤答の多い順）</option>
+        <option value="due">次回復習が近い順</option>
+        <option value="lr-desc">最近復習した順</option>
+        <option value="lr-asc">しばらく復習していない順</option>
+        <option value="miss">間違えた回数が多い順</option>
+        <option value="added">追加が新しい順</option>
+        <option value="alpha">アルファベット順</option>
+      </select>
+    </div>
+    <p id="bank-result" class="sm:col-span-2 text-xs text-slate-500"></p>
+  </div>
+
   <div class="grid grid-cols-1 md:grid-cols-2 gap-4" id="bank-list"></div>
   <p id="bank-empty" class="hidden text-sm text-slate-500 text-center py-10">この分類のフレーズはまだありません。</p>
 </section>
@@ -1115,7 +1136,8 @@
 
   /* ============ state ============ */
   function defaultState() {
-    return { bank: SEED_BANK.slice(), sessions: {}, phase: 1, filter: 'all', gen: { free: [], translate: [] }, drills: {} };
+    return { bank: SEED_BANK.slice(), sessions: {}, phase: 1, filter: 'all', gen: { free: [], translate: [] },
+             drills: {}, accepts: {} };
   }
 
   // 静的プール + AI生成分
@@ -1130,7 +1152,8 @@
           return {
             bank: p.bank, sessions: p.sessions, phase: p.phase || 1, filter: 'all',
             gen: (p.gen && Array.isArray(p.gen.free)) ? p.gen : { free: [], translate: [] },
-            drills: (p.drills && typeof p.drills === 'object') ? p.drills : {}
+            drills: (p.drills && typeof p.drills === 'object') ? p.drills : {},
+            accepts: (p.accepts && typeof p.accepts === 'object') ? p.accepts : {}
           };
         }
       }
@@ -1260,7 +1283,7 @@
   }
   function typeTokenRatio(t) {
     var w = String(t).toLowerCase().replace(/[^a-z\s']/g, ' ').split(/\s+/).filter(Boolean);
-    if (w.length < 8) return 1;
+    if (w.length < 4) return 1;
     var seen = {}, uniq = 0;
     w.forEach(function (x) { if (!seen[x]) { seen[x] = 1; uniq++; } });
     return uniq / w.length;
@@ -1327,6 +1350,8 @@
     });
 
     var keyRatio = groups.length ? (hits.length / groups.length) : 1;
+    // 表現例を使っていなくても、別の言い方で書けていればよい。
+    // 「書けている」かどうかは語彙の多様さと分量から推定する（kr は下で算出）。
     var notes = [];
     var range = LEN_RANGE[q.len] || LEN_RANGE.medium;
     var wc = wordCount(text);
@@ -1334,6 +1359,10 @@
     var bands = {};
 
     var lenB = lengthBand(wc, range);
+    // 語の重複と文の単調さを重く見る（同じ文の言い換えだけで水増しした解答を弾くため）
+    var contentScore2 = Math.max(0, Math.min(1,
+      (lenB / 5) * 0.3 + typeTokenRatio(text) * 0.5 + sentenceOpenerVariety(text) * 0.2));
+    var kr = Math.max(keyRatio, contentScore2);
     var formB = formBand(text);
     if (wc < range[0]) notes.push('もう少し情報を足しましょう（目安 ' + range[0] + '〜' + range[1] + ' words / 現在 ' + wc + '）。');
     if (!/^[A-Z"']/.test(text)) notes.push('文頭は大文字で始めましょう。');
@@ -1345,14 +1374,14 @@
     if (ph === 2 && !essay) {
       // 和文英訳の1〜2文に接続表現や具体例を求めるのは筋違いなので、
       // キー表現の再現度と体裁で評価する
-      bands.task = ratioBand(keyRatio);
-      bands.organization = ratioBand(keyRatio * 0.6 + (lenB / 5) * 0.4);
+      bands.task = ratioBand(kr);
+      bands.organization = ratioBand(kr * 0.6 + (lenB / 5) * 0.4);
       bands.grammar = formB;
-      bands.lexis = ratioBand(keyRatio * 0.7 + typeTokenRatio(text) * 0.3);
+      bands.lexis = ratioBand(kr * 0.7 + typeTokenRatio(text) * 0.3);
     } else if (ph === 2 && (q.cat === 'p2purpose' || q.cat === 'p2register')) {
       // メール課題は論理展開ではなく、用件の充足と丁寧さで見る
       var polite = countAny(norm, FORMAL_MARKERS) + countAny(norm, HEDGES);
-      bands.task = ratioBand(keyRatio);
+      bands.task = ratioBand(kr);
       bands.organization = clamp5(2.5 + (polite ? 1.5 : 0) + (sentencesOf(text).length >= 3 ? 1 : 0));
       bands.grammar = formB;
       bands.lexis = clamp5(ratioBand(typeTokenRatio(text)) * 0.6 + sentenceOpenerVariety(text) * 5 * 0.4);
@@ -1365,7 +1394,7 @@
       // 単元によって重点が違うので、論理を示す手がかりの「種類数」で評価する
       var signals = Math.min(conn, 3) + (stance ? 1 : 0) + (exs ? 1 : 0);
       var logic = clamp5(signals * 1.25);
-      bands.task = ratioBand(keyRatio * 0.75 + (lenB / 5) * 0.25);
+      bands.task = ratioBand(kr * 0.75 + (lenB / 5) * 0.25);
       bands.organization = logic;
       bands.grammar = formB;
       bands.lexis = clamp5(ratioBand(typeTokenRatio(text)) * 0.6 + sentenceOpenerVariety(text) * 5 * 0.4);
@@ -1374,8 +1403,8 @@
       if (conn < 2) notes.push('接続表現が少なめです（However / That said / Overall など）。');
     } else if (ph === 3 && !essay) {
       // 1〜2文の和文英訳にトーンの一貫性を求めるのは筋違いなので、再現度で見る
-      bands.organization = ratioBand(keyRatio * 0.7 + (lenB / 5) * 0.3);
-      bands.lexis = ratioBand(keyRatio * 0.7 + typeTokenRatio(text) * 0.3);
+      bands.organization = ratioBand(kr * 0.7 + (lenB / 5) * 0.3);
+      bands.lexis = ratioBand(kr * 0.7 + typeTokenRatio(text) * 0.3);
       bands.task = clamp5(5 - countAny(norm, WORDY) * 1.2);
       bands.grammar = formB;
     } else if (ph === 3) {
@@ -1394,18 +1423,19 @@
       if (wordy) notes.push('冗長な言い回しが ' + wordy + ' 箇所あります（due to the reason that → because など）。');
       if (!hedge && q.cat === 'p3hedge') notes.push('断定を和らげる表現（might / it seems / I may be ...）が使えると角が立ちません。');
     } else {
-      bands.task = ratioBand(keyRatio);
+      bands.task = ratioBand(kr);
       bands.grammar = formB;
-      bands.lexis = ratioBand(keyRatio * 0.7 + typeTokenRatio(text) * 0.3);
+      bands.lexis = ratioBand(kr * 0.7 + typeTokenRatio(text) * 0.3);
       bands.organization = clamp5(lenB * 0.7 + (sentencesOf(text).length > 1 ? 1.5 : 0.5));
     }
 
     var score = bandsToScore(bands, ph);
     if (score === null) score = 0;
 
-    if (misses.length) notes.unshift('狙いのキー表現のうち ' + misses.length + ' 個が使われていません。');
-    else notes.unshift('狙いのキー表現をすべて使えています。');
-    notes.push('※ 簡易採点では文法の正確さを判定できません。「文法・語法」は推定値です。');
+    if (misses.length) notes.unshift('表現例のうち ' + misses.length + ' 個は使っていません（別の言い方で伝わっていれば問題ありません）。');
+    else notes.unshift('表現例をすべて使えています。');
+    notes.push('※ 簡易採点では文法の正確さと自然さを判定できません。分量・語彙の多様さ・体裁からの推定なので、実力より高く出ることがあります。'
+      + (getKey() ? '' : ' 設定でAPIキーを登録すると、内容を読んだうえでの採点になります。'));
 
     return { score: score, hits: hits, misses: misses, notes: notes, bands: bands, phase: ph };
   }
@@ -1514,7 +1544,11 @@
     return '【課題タイプ】' + (item.type === 'free' ? '自由英作文' : '和文英訳') + '\n' +
       '【出題（日本語）】\n' + promptJp + '\n\n' +
       '【模範解答（参考）】\n' + modelAns + '\n\n' +
-      '【この問題で身につけたいキー表現】\n' + keys.join('\n') + '\n\n' +
+      '【この問題で使える表現の例】\n' + keys.join('\n') + '\n' +
+      '※ これは「こう言える」という一例です。<strong>使っていなくても減点しないでください。</strong>\n' +
+      '  学習者が別の言い方で同じ内容を自然に伝えられていれば、その観点は満点で構いません。\n' +
+      '  不自然・不正確な場合にのみ減点し、その理由は「表現例と違うから」ではなく' +
+      '「その言い方のどこが不自然か」で説明してください。\n\n' +
       '【想定される長さ】' + range[0] + '〜' + range[1] + ' words\n\n' +
       '【学習者の解答】\n' + (item.answer || '（未解答）') + '\n' +
       anchorText(item) + '\n' +
@@ -1529,7 +1563,8 @@
       '2 = 部分的にしか伝わらない。誤りが理解を妨げている\n' +
       '1 = ほとんど伝わらない\n' +
       '0 = 無解答、または課題と無関係\n\n' +
-      '【重要】制限時間内に書かれた「初稿」として評価してください。' +
+      '【重要】表現例を使ったかどうかは採点に含めません。伝わり方と自然さで評価してください。\n' +
+      '制限時間内に書かれた「初稿」として評価してください。' +
       '意味の伝達を妨げない軽微な誤りは減点しすぎないでください。' +
       '一方で、日本語の直訳になっている箇所は lexis で厳しめに見てください。\n\n' +
       '【手順】まず check で誤りと良い点を洗い出し、そのうえで各バンドを決めてください。' +
@@ -1538,8 +1573,8 @@
       '{\n' +
       '  "check": {\n' +
       '    "errors": ["見つかった文法・語法の誤りを短く列挙。無ければ空配列"],\n' +
-      '    "keys_used": ["狙いのキー表現のうち実際に使えていたもの"],\n' +
-      '    "keys_missing": ["使えていなかったもの"],\n' +
+      '    "keys_used": ["表現例のうち実際に使っていたもの"],\n' +
+      '    "keys_alternative": ["表現例は使っていないが、学習者が別の言い方で同じ内容を伝えられている箇所"],\n' +
       '    "unnatural": ["日本語の直訳に見える箇所。無ければ空配列"]\n' +
       '  },\n' +
       '  "criteria": {\n' +
@@ -1809,11 +1844,14 @@
   function mergeState(local, remote) {
     if (!remote || typeof remote !== 'object') return local;
     var out = { bank: [], sessions: {}, phase: Math.max(local.phase || 1, remote.phase || 1), filter: local.filter || 'all',
-                gen: { free: [], translate: [] }, drills: {} };
+                gen: { free: [], translate: [] }, drills: {}, accepts: {} };
 
-    // 復習カードは両端末分をそのまま統合
+    // 復習カードと許容例は両端末分をそのまま統合
     [remote.drills || {}, local.drills || {}].forEach(function (src) {
       Object.keys(src).forEach(function (k) { out.drills[k] = src[k]; });
+    });
+    [remote.accepts || {}, local.accepts || {}].forEach(function (src) {
+      Object.keys(src).forEach(function (k) { out.accepts[k] = src[k]; });
     });
 
     // 生成済み問題は id で重複を除いて統合
@@ -1890,7 +1928,7 @@
 
   function payload() {
     return JSON.stringify({ bank: state.bank, sessions: state.sessions, phase: state.phase, gen: state.gen,
-                            drills: state.drills, v: 3 });
+                            drills: state.drills, accepts: state.accepts, v: 3 });
   }
 
   function syncNow(silent) {
@@ -2645,6 +2683,8 @@
     cur.dmiss = (cur.dmiss || 0) + (b.dmiss || 0);
     cur.streak = Math.max(cur.streak || 0, b.streak || 0);
     cur.dc = Math.max(cur.dc || 0, b.dc || 0);
+    cur.lr = Math.max(cur.lr || 0, b.lr || 0);
+    if (!cur.added || (b.added && b.added < cur.added)) cur.added = b.added || cur.added;
     if ((b.u || 0) > (cur.u || 0)) { cur.category = b.category; cur.next = b.next; cur.u = b.u; }
     // 表記は「言い換えを多く含むもの」を優先し、同程度なら短い方（プレースホルダの少ない方）を残す
     var na = String(cur.phrase).split('/').length, nb = String(b.phrase).split('/').length;
@@ -2713,6 +2753,49 @@
     });
   }
 
+
+  /* ---- 表現バンクの検索と並び替え ---- */
+  var bankSort = 'priority';
+  var bankQuery = '';
+
+  function bankMatches(b, q) {
+    if (!q) return true;
+    var hay = (String(b.phrase || '') + ' ' + String(b.meaning || '')).toLowerCase();
+    return hay.indexOf(q) !== -1;
+  }
+
+  function lastReviewed(b) { return b.lr || 0; }
+  function addedAt(b) { return b.added || b.u || 0; }
+
+  function sortBank(list, mode) {
+    var arr = list.slice();
+    if (mode === 'due') {
+      return arr.sort(function (a, b) {
+        var da = a.due || '9999-12-31', db = b.due || '9999-12-31';
+        if (da !== db) return da < db ? -1 : 1;
+        return totalMiss(b) - totalMiss(a);
+      });
+    }
+    if (mode === 'lr-desc') return arr.sort(function (a, b) { return lastReviewed(b) - lastReviewed(a); });
+    if (mode === 'lr-asc') return arr.sort(function (a, b) { return lastReviewed(a) - lastReviewed(b); });
+    if (mode === 'miss') return arr.sort(function (a, b) { return totalMiss(b) - totalMiss(a); });
+    if (mode === 'added') return arr.sort(function (a, b) { return addedAt(b) - addedAt(a); });
+    if (mode === 'alpha') return arr.sort(function (a, b) {
+      return String(a.phrase).toLowerCase() < String(b.phrase).toLowerCase() ? -1 : 1;
+    });
+    return sortedBank();      // 既定は優先度順
+  }
+
+  function reviewedLabel(b) {
+    if (!b.lr) return '未実施';
+    var d = new Date(b.lr);
+    var diff = daysBetween(todayKey(d), TODAY);
+    if (diff === 0) return '今日';
+    if (diff === 1) return '昨日';
+    if (diff < 30) return diff + '日前';
+    return shortDate(todayKey(d));
+  }
+
   /* ============ 表現バンク ============ */
   function addVocab(list) {
     (list || []).forEach(function (v) {
@@ -2726,7 +2809,8 @@
         return;
       }
       state.bank.push({ id: 'v' + hashStr(k), key: k, phrase: v.p, meaning: v.m, category: 'new',
-                        stage: 0, due: null, streak: 0, misses: 0, dmiss: 0, dc: 0, u: Date.now() });
+                        stage: 0, due: null, streak: 0, misses: 0, dmiss: 0, dc: 0,
+                        added: Date.now(), lr: 0, u: Date.now() });
     });
   }
 
@@ -3188,6 +3272,22 @@
       }).join('') + '</div></div>';
   }
 
+  // その問題で使える表現の例。使わなくてもよいことを明示する。
+  function keyExamples(item, q) {
+    var list = (item.type === 'free')
+      ? q.reqs.map(function (r) { return (r.keys[0] || [])[0]; })
+      : q.keys.map(function (g) { return g[0]; });
+    list = list.filter(Boolean);
+    if (!list.length) return '';
+    return '<div class="mt-3 pt-3 border-t border-slate-200">' +
+      '<p class="text-xs font-extrabold text-slate-500 mb-2">使える表現の例（使わなくても構いません）</p>' +
+      '<div class="flex flex-wrap gap-2">' + list.map(function (k) {
+        return '<span class="inline-flex items-center gap-1 bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1">' +
+               '<span class="font-mono font-bold text-slate-800" style="font-size:0.95rem">' + esc(k) + '</span>' +
+               speakBtn(k, 'sm') + '</span>';
+      }).join('') + '</div></div>';
+  }
+
   function secModel(item, q) {
     var n = item.ai ? '4' : '2';
     if (item.type === 'free') {
@@ -3198,12 +3298,14 @@
           '<p class="q-en text-slate-800">' + esc(q.casual) + '</p></div>' +
         '<div class="bg-indigo-50 border border-indigo-200 rounded-xl p-4">' +
           '<div class="flex items-center justify-between gap-2 mb-2"><p class="text-xs font-extrabold text-indigo-700">Semi-Formal / 丁寧</p>' + speakBtn(q.formal, 'sm') + '</div>' +
-          '<p class="q-en text-slate-800">' + esc(q.formal) + '</p></div></div></div>';
+          '<p class="q-en text-slate-800">' + esc(q.formal) + '</p></div></div>' +
+        keyExamples(item, q) + '</div>';
     }
     return '<div class="mt-5"><p class="text-xs font-extrabold text-slate-500 mb-2">' + n + '. 模範解答</p>' +
       '<div class="bg-indigo-50 border border-indigo-200 rounded-xl p-4">' +
       '<div class="flex items-start gap-2"><p class="q-en text-slate-800 flex-1">' + esc(q.en) + '</p>' + speakBtn(q.en) + '</div>' +
-      (q.tip ? '<p class="text-sm text-indigo-900 mt-3 pt-3 border-t border-indigo-200">' + esc(q.tip) + '</p>' : '') + '</div></div>';
+      (q.tip ? '<p class="text-sm text-indigo-900 mt-3 pt-3 border-t border-indigo-200">' + esc(q.tip) + '</p>' : '') +
+      keyExamples(item, q) + '</div></div>';
   }
 
   function secCriteria(item, g) {
@@ -3246,7 +3348,7 @@
       bandsHtml +
       '<div class="rounded-xl border border-slate-200 p-4">' +
       '<ul class="space-y-1">' + g.notes.map(function (t) { return '<li class="text-sm text-slate-700 flex gap-2"><span class="text-slate-300">–</span><span>' + esc(t) + '</span></li>'; }).join('') + '</ul>' +
-      (g.misses && g.misses.length ? '<p class="text-sm text-rose-700 mt-3">使えなかったキー表現: ' + g.misses.map(function (m) { return '<span class="hl-key">' + esc(m.variants[0]) + '</span>'; }).join(' ') + '</p>' : '') +
+      (g.misses && g.misses.length ? '<p class="text-sm text-slate-600 mt-3">今回使わなかった表現例（減点していません）: ' + g.misses.map(function (m) { return '<span class="hl-key">' + esc(m.variants[0]) + '</span>'; }).join(' ') + '</p>' : '') +
       '</div></div>';
   }
 
@@ -3371,7 +3473,20 @@
 
   function renderBank() {
     var box = $('#bank-list');
-    var vis = sortedBank().filter(function (b) { return state.filter === 'all' || b.category === state.filter; });
+    var q = bankQuery;
+    var base = sortBank(state.bank, bankSort);
+    var vis = base.filter(function (b) {
+      return (state.filter === 'all' || b.category === state.filter) && bankMatches(b, q);
+    });
+
+    var rb = $('#bank-result');
+    if (rb) {
+      rb.textContent = q
+        ? '「' + q + '」に一致: ' + vis.length + ' 件 / 全 ' + state.bank.length + ' 件'
+        : '全 ' + state.bank.length + ' 件のうち ' + vis.length + ' 件を表示';
+    }
+    var si = $('#bank-search'); if (si && si.value !== bankQuery) si.value = bankQuery;
+    var so = $('#bank-sort'); if (so) so.value = bankSort;
     box.innerHTML = vis.map(function (b) {
       return '<div class="bg-white border border-slate-200 rounded-xl p-4 shadow-sm space-y-2">' +
         '<div class="flex items-start justify-between gap-2">' +
@@ -3385,9 +3500,12 @@
         '<div class="pt-2 flex items-center justify-between text-xs text-slate-400 border-t border-slate-100">' +
         '<span>次回復習: <strong class="' + (/今日|明日/.test(dueLabel(b)) ? 'text-amber-600' : 'text-slate-600') + '">' + esc(dueLabel(b)) +
           (overdueDays(b) > 0 ? '（' + overdueDays(b) + '日遅れ）' : '') + '</strong></span>' +
-        '<span>' + (b.category === 'mastered' ? '完了' : (b.stage || 0) + ' / ' + DRILL_STAGES + ' 回') + '</span></div></div>';
+        '<span>' + (b.category === 'mastered' ? '完了' : (b.stage || 0) + ' / ' + DRILL_STAGES + ' 回') + '</span></div>' +
+        '<div class="text-xs text-slate-400">最終復習: ' + esc(reviewedLabel(b)) + '</div></div>';
     }).join('');
     $('#bank-empty').classList.toggle('hidden', vis.length > 0);
+    if (!vis.length && bankQuery) $('#bank-empty').textContent = '「' + bankQuery + '」に一致する表現はありません。';
+    else $('#bank-empty').textContent = 'この分類のフレーズはまだありません。';
 
     var counts = { all: state.bank.length, 'new': 0, recall: 0, mastered: 0 };
     state.bank.forEach(function (b) { if (counts[b.category] !== undefined) counts[b.category]++; });
@@ -3536,6 +3654,104 @@
   }
 
   /* ============ 復習ドリル ============ */
+
+
+  /* ---- 復習ドリルの照合（内容語ベース） ----
+     時制・人称・冠詞・助動詞・語順の細部は問わない。
+     「狙いの内容語が、その順で現れているか」だけを見る。 */
+
+  // 不規則動詞の活用形から原形を引く表を作る
+  var BASE_OF = (function () {
+    var m = {};
+    Object.keys(IRREGULAR).forEach(function (base) {
+      m[base] = base;
+      IRREGULAR[base].forEach(function (f) { m[f] = base; });
+    });
+    return m;
+  })();
+
+  // 助動詞は使い分けの幅が広いので同じものとして扱う
+  var EQUIV = {
+    would: '#modal', could: '#modal', will: '#modal', can: '#modal',
+    may: '#modal', might: '#modal', shall: '#modal', should: '#modal',
+    'd': '#modal', 'll': '#modal'
+  };
+
+  function stemWord(w) {
+    w = String(w).replace(/'(s|re|ve|ll|d|m|t)$/, '');
+    if (EQUIV[w]) return EQUIV[w];
+    if (BASE_OF[w]) return BASE_OF[w];
+    if (/ies$/.test(w) && w.length > 4) return w.slice(0, -3) + 'y';
+    if (/([^aeiou])\1ed$/.test(w)) return w.slice(0, -3);
+    if (/([^aeiou])\1ing$/.test(w)) return w.slice(0, -4);
+    if (/ied$/.test(w) && w.length > 4) return w.slice(0, -3) + 'y';
+    if (/ed$/.test(w) && w.length > 4) return w.slice(0, -2);
+    if (/ing$/.test(w) && w.length > 5) return w.slice(0, -3);
+    if (/es$/.test(w) && w.length > 4) return w.slice(0, -2);
+    if (/s$/.test(w) && !/ss$/.test(w) && w.length > 3) return w.slice(0, -1);
+    return w;
+  }
+
+  // 無くても意味が通る語（冠詞・人称・be動詞・助動詞）
+  var SOFT_WORDS = {
+    a: 1, an: 1, the: 1, to: 1,
+    be: 1, is: 1, am: 1, are: 1, was: 1, were: 1, been: 1, being: 1,
+    will: 1, would: 1, can: 1, could: 1, shall: 1, should: 1, may: 1, might: 1, must: 1,
+    do: 1, does: 1, did: 1, have: 1, has: 1, had: 1, get: 1, got: 1
+  };
+  function isSoft(w) { return !!(SOFT_WORDS[w] || PRONOUNS[w]); }
+
+  function tokensOf(text) {
+    return String(text).toLowerCase()
+      .replace(/[\u2018\u2019]/g, "'")
+      .replace(/[^a-z0-9'\s]/g, ' ')
+      .split(/\s+/).filter(Boolean);
+  }
+
+  // 狙いの表現から、照合に使う語の並びを作る
+  function targetTokens(alt) {
+    var raw = tokensOf(String(alt).replace(/\[[^\]]*\]/g, ' ').replace(/\([^)]*\)/g, ' '));
+    var out = [], dropped = false;
+    raw.forEach(function (w, i) {
+      var lw = w.replace(/^-+|-+$/g, '');
+      if (!lw) { dropped = true; return; }
+      if (PLACEHOLDERS[lw] && i > 0) { dropped = true; return; }   // -ing, sth, X など
+      if (/^[a-z]$/.test(lw) && lw !== 'a' && lw !== 'i') { dropped = true; return; }
+      out.push({ stem: stemWord(lw), soft: isSoft(lw) });
+    });
+    // 「have until X to do」の to のように、落とした語の相方だけを外す
+    while (dropped && out.length > 1 && out[out.length - 1].stem === 'to') out.pop();
+    // 末尾の語は意味を分ける（look up と look up to）ので必ず必須にする
+    if (out.length) out[out.length - 1].soft = false;
+    return out;
+  }
+
+  // 狙いの語が「その順で」出てくれば正解。間に何が入っていてもよい。
+  function flexMatch(answerText, alt) {
+    var want = targetTokens(alt);
+    if (!want.length) return false;
+    var got = tokensOf(answerText).map(stemWord);
+    var i = 0;
+    for (var t = 0; t < want.length; t++) {
+      var found = -1;
+      for (var j = i; j < got.length; j++) {
+        if (got[j] === want[t].stem) { found = j; break; }
+      }
+      if (found === -1) {
+        if (want[t].soft) continue;       // 冠詞・人称・助動詞は無くてもよい
+        return false;
+      }
+      i = found + 1;
+    }
+    return true;
+  }
+
+  function flexMatchAny(answerText, alts) {
+    for (var i = 0; i < (alts || []).length; i++) {
+      if (flexMatch(answerText, alts[i])) return true;
+    }
+    return false;
+  }
 
   /* ---- 復習ドリルの正誤判定 ----
      狙いの表現さえ使えていれば正解とする。主語・時制・前後の語は問わない。 */
@@ -3796,20 +4012,32 @@
     'You always reply with a single valid JSON object and nothing else — no markdown fences, no commentary.';
 
   function buildDrillPrompt(list) {
-    return '次の英語表現それぞれについて、復習用の短文を1つずつ作ってください。\n\n' +
+    return '次の英語表現それぞれについて、復習用の短文と「正解として受け入れるべき答え方」を作ってください。\n\n' +
       list.map(function (b) { return '- ' + b.phrase + '（' + (b.meaning || '') + '）'; }).join('\n') + '\n\n' +
       '【条件】\n' +
       '- 各表現につき、場面の異なる短文を2つ作ってください（間違えたときに別の文で再出題するため）。\n' +
       '- 英文は5語以内を基本とし、最大でも7語まで。\n' +
       '- その表現を使わなければ書けない、自然な日常文にしてください。\n' +
       '- jp は英文に対応する自然な日本語。直訳調にしないでください。\n' +
-      '- blank は en から対象表現の部分だけを ____ に置き換えたもの。それ以外は en と完全に同じにしてください。\n\n' +
+      '- blank は en から「対象表現に当たる部分だけ」を ____ に置き換えたものにしてください。\n' +
+      '  ____ 以外の文字は en と1文字も違わないようにし、____ は1か所だけにしてください。\n' +
+      '  対象表現より広い範囲（文全体など）を ____ にしないでください。\n\n' +
+      '【accepts / rejects】学習者の答え方の揺れを吸収するために使います。\n' +
+      '- accepts: その表現を正しく使えていると判断してよい英文を5つ。' +
+      '時制（現在・過去・進行形・完了）、主語や人称、単数複数、助動詞（would / could / can など）、' +
+      '語順（句動詞の目的語の位置）を変えたものを混ぜてください。文全体で書いてください。\n' +
+      '- rejects: 意味が違うため不正解にすべき英文を2つ。似ているが別の表現を使ったものにしてください。\n\n' +
       '次のJSON形式で返してください。\n' +
       '{\n' +
-      '  "cards": [{"p": "対象の表現（入力と同じ文字列）", "items": [\n' +
-      '    {"jp": "日本語", "en": "英文（5語以内）", "blank": "____ を含む英文"},\n' +
-      '    {"jp": "別の場面の日本語", "en": "別の英文（5語以内）", "blank": "____ を含む英文"}\n' +
-      '  ]}]\n' +
+      '  "cards": [{\n' +
+      '    "p": "対象の表現（入力と同じ文字列）",\n' +
+      '    "items": [\n' +
+      '      {"jp": "日本語", "en": "英文（5語以内）", "blank": "____ を含む英文"},\n' +
+      '      {"jp": "別の場面の日本語", "en": "別の英文（5語以内）", "blank": "____ を含む英文"}\n' +
+      '    ],\n' +
+      '    "accepts": ["正解にすべき英文を5つ"],\n' +
+      '    "rejects": ["不正解にすべき英文を2つ"]\n' +
+      '  }]\n' +
       '}';
   }
 
@@ -3833,10 +4061,15 @@
         var j = parseAiJson(text);
         var cards = Array.isArray(j.cards) ? j.cards : [];
         state.drills = state.drills || {};
+        state.accepts = state.accepts || {};
         cards.forEach(function (c) {
           if (!c || !c.p) return;
           var k = bankKey(c.p);
           if (!k) return;
+          // 「この答え方なら正解」「これは不正解」を表現ごとに保存する
+          var ok = (Array.isArray(c.accepts) ? c.accepts : []).filter(Boolean).map(String).slice(0, 8);
+          var ng = (Array.isArray(c.rejects) ? c.rejects : []).filter(Boolean).map(String).slice(0, 4);
+          if (ok.length || ng.length) state.accepts[k] = { ok: ok, ng: ng };
           // items 配列でも、単体形式でも受け取れるようにする
           var items = Array.isArray(c.items) ? c.items : [c];
           var ok = items.filter(function (x) { return x && x.jp && x.en; })
@@ -3851,7 +4084,9 @@
   }
 
   function ensureDrills() {
-    var q = drillToday().slice(0, 8).filter(function (b) { return !drillCard(b); });
+    var q = drillToday().slice(0, 8).filter(function (b) {
+      return !drillCard(b) || !acceptsFor(b).ok.length;
+    });
     if (!q.length || !getKey()) return Promise.resolve(false);
     return makeDrills(q).catch(function (e) {
       console.warn('復習カードの作成に失敗しました', e);
@@ -3901,6 +4136,20 @@
     // 取り出しに失敗した（空・長すぎる）場合は使わない
     if (!out || out.length > card.en.length - 2) return '';
     return out;
+  }
+
+
+  // 穴埋めが成立する条件:
+  //  1) ____ から答えを取り出せる
+  //  2) その答えが、狙いの表現を含んでいる（含まないなら穴埋めの意味がない）
+  function blankIsValid(b, card) {
+    var a = blankAnswer(card);
+    if (!a) return false;
+    var alts = drillAlts(b);
+    for (var i = 0; i < alts.length; i++) {
+      if (flexMatch(a, alts[i])) return true;
+    }
+    return false;
   }
 
   // ヒントの対象は「実際に入力する文字列」。出題形式ごとに変える。
@@ -4008,8 +4257,8 @@
     var seen = drillSeen[b.id] || 0;
     // 2回目以降は別の文で出す
     var card = cards.length ? cards[seen % cards.length] : null;
-    var hasBlank = card && card.blank && card.blank.indexOf('____') !== -1;
-    // どの表現を答えるか迷わないよう、穴埋めを基本にする
+    // 空欄から答えを取り出せないカードは穴埋めにしない（答えが示せないため）
+    var hasBlank = card && card.blank && card.blank.indexOf('____') !== -1 && blankIsValid(b, card);
     var mode;
     if (!card) mode = 'recall';
     else if (hasBlank) mode = (seen % 3 === 2) ? 'translate' : 'blank';
@@ -4021,7 +4270,7 @@
       sub = 'この意味になる英語表現を書いてください';
     } else if (mode === 'blank') {
       prompt = esc(card.blank).replace(/____/g, '<span class="text-indigo-600 font-mono">____</span>');
-      sub = '空欄に入る表現を書いてください（日本語: ' + esc(card.jp) + '）';
+      sub = '空欄（____）に入る部分だけを書いてください（日本語: ' + esc(card.jp) + '）';
     } else {
       prompt = esc(card.jp);
       sub = 'これを英語にしてください（5語程度）';
@@ -4090,6 +4339,24 @@
     if (inp) inp.focus();
   }
 
+
+  // 表現ごとに保存した「正解にしてよい答え方」
+  function acceptsFor(b) {
+    var key = b.key || bankKey(b.phrase);
+    var a = (state.accepts || {})[key];
+    return { ok: (a && a.ok) || [], ng: (a && a.ng) || [] };
+  }
+
+  // 保存された許容例のいずれかと、内容語ベースで一致すれば正解
+  function acceptsMatch(answerText, list) {
+    var n = normalize(answerText);
+    for (var i = 0; i < (list || []).length; i++) {
+      if (normalize(list[i]) === n) return true;
+      if (flexMatch(answerText, list[i])) return true;
+    }
+    return false;
+  }
+
   function drillCheck() {
     if (drillAnswered) return;
     var q = activeOrder();
@@ -4104,17 +4371,27 @@
     var cardsC = drillCards(b);
     var seenC = Math.max(0, (drillSeen[b.id] || 0));
     var card = cardsC.length ? cardsC[seenC % cardsC.length] : null;
-    var hasBlankC = card && card.blank && card.blank.indexOf('____') !== -1;
+    var hasBlankC = card && card.blank && card.blank.indexOf('____') !== -1 && blankIsValid(b, card);
     var mode = !card ? 'recall' : (hasBlankC ? ((seenC % 3 === 2) ? 'translate' : 'blank') : 'translate');
     var norm = normalize(val);
     // 狙いの表現が入っていれば正解。主語・時制・前後の語のずれは不問。
     var exact = (mode === 'blank') ? blankAnswer(card) : '';
-    var ok = matchesAnyExpression(norm, alts) ||
+    var acc = acceptsFor(b);
+
+    // 明確に別表現とされているものは、先に不正解と判定する
+    var rejected = acc.ng.some(function (x) { return normalize(x) === norm; });
+
+    // 内容語がその順で並んでいれば正解。時制・人称・冠詞・助動詞は不問。
+    var ok = !rejected && (
+             flexMatchAny(val, alts) ||
+             (exact && flexMatch(val, exact)) ||
+             acceptsMatch(val, acc.ok) ||
+             matchesAnyExpression(norm, alts) ||
              hasAnyLoose(norm, alts) ||
-             (exact && normalize(exact) === norm) ||
-             (card && card.en && normalize(card.en) === norm);
+             (card && card.en && normalize(card.en) === norm));
 
     drillAnswered = true;
+    b.lr = Date.now();                 // 最終復習日時
     // 解答したときだけ回数を進める（次に出るときは別の文になる）
     drillSeen[b.id] = (drillSeen[b.id] || 0) + 1;
 
@@ -4125,6 +4402,7 @@
       // 抜き打ち確認: 正解なら間隔をさらに倍に、間違えたら復習の最初から
       drillSeen[b.id] = (drillSeen[b.id] || 0) + 1;
       drillAnswered = true;
+      b.lr = Date.now();
       if (ok) {
         b.due = addDays(TODAY, DRILL_RECHECK_DAYS * 2);
         b.streak = (b.streak || 0) + 1;
@@ -4210,10 +4488,15 @@
     res.innerHTML =
       '<div class="rounded-xl border-2 p-4 space-y-2 ' + (ok ? 'border-emerald-300 bg-emerald-50' : 'border-rose-300 bg-rose-50') + '">' +
         '<p class="font-extrabold ' + (ok ? 'text-emerald-800' : 'text-rose-800') + '">' + msg + '</p>' +
-        '<p class="text-sm text-slate-600">狙いの表現: <span class="font-mono font-bold text-slate-900">' + esc(b.phrase) + '</span>' +
-          speakBtn(String(b.phrase).split('/')[0], 'sm') +
-          (b.meaning ? '（' + esc(b.meaning) + '）' : '') + '</p>' +
+        (mode === 'blank' && exact
+          ? '<div class="bg-white border-2 border-slate-300 rounded-lg p-3">' +
+            '<p class="text-[11px] font-extrabold text-slate-500 mb-1">空欄の答え</p>' +
+            '<div class="flex items-center gap-2"><p class="q-en text-slate-900 flex-1">' + esc(exact) + '</p>' + speakBtn(exact, 'sm') + '</div></div>'
+          : '<p class="text-sm text-slate-600">狙いの表現: <span class="font-mono font-bold text-slate-900">' + esc(b.phrase) + '</span>' +
+            speakBtn(String(b.phrase).split('/')[0], 'sm') +
+            (b.meaning ? '（' + esc(b.meaning) + '）' : '') + '</p>') +
         (card ? '<div class="flex items-start gap-2 bg-white border border-slate-200 rounded-lg p-3">' +
+                '<p class="text-[11px] font-extrabold text-slate-500 shrink-0 mt-1">全文</p>' +
                 '<p class="q-en text-slate-800 flex-1">' + esc(card.en) + '</p>' + speakBtn(card.en) + '</div>' : '') +
         (ok ? '' : '<p class="text-sm text-slate-600">あなたの解答: ' + esc(val) + '</p>') +
         (ok ? '' : '<p class="text-xs text-slate-500">狙いの表現さえ使えていれば、主語や時制のずれは不問です。</p>') +
@@ -4623,6 +4906,7 @@
       updateProgress();
     }
     if (t && t.id === 'history-keyword') renderHistory();
+    if (t && t.id === 'bank-search') { bankQuery = String(t.value || '').trim().toLowerCase(); renderBank(); }
   });
 
   document.addEventListener('change', function (e) {
@@ -4641,6 +4925,7 @@
     }
     if (e.target && e.target.id === 'tts-rate') { lsSet(TTS_RATE_STORE, e.target.value); renderTtsSettings(); }
     if (e.target && e.target.id === 'tts-voice') { lsSet(TTS_VOICE_STORE, e.target.value); renderTtsSettings(); }
+    if (e.target && e.target.id === 'bank-sort') { bankSort = e.target.value; renderBank(); }
   });
 
   document.addEventListener('keydown', function (e) {
