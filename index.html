@@ -1667,7 +1667,7 @@
     });
   }
 
-  function aiGradeOne(item, key, model) {
+  function aiGradeOne(item, key, model, brief) {
     return fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
@@ -1678,11 +1678,15 @@
       },
       body: JSON.stringify({
         model: model,
-        max_tokens: 4000,
+        // 指摘の説明を2欄に分けたぶん出力量が増えたので、上限に余裕を持たせる
+        max_tokens: brief ? 4000 : 12000,
         // temperature は Claude 4.7 以降で廃止され、送ると 400 になるため指定しない。
         // 採点のぶれ対策は check ステップと過去の採点例（ものさし）で担保する。
         system: AI_SYSTEM,
-        messages: [{ role: 'user', content: buildAiPrompt(item) }]
+        messages: [{ role: 'user', content: buildAiPrompt(item) + (brief
+          ? '\n\n【重要】前回は出力が長すぎて途中で切れました。今回は簡潔に書いてください。' +
+            'issues は最も重要な2件まで、各説明は1文、good と vocab は各1件までにしてください。'
+          : '') }]
       })
     }).then(function (res) {
       return res.json().then(function (data) {
@@ -1700,7 +1704,8 @@
         }
         if (data.stop_reason === 'max_tokens') {
           var e2 = new Error('応答が長すぎて途中で切れました。');
-          e2.retryable = false;
+          e2.retryable = true;     // 短く書かせて出し直す
+          e2.needBrief = true;
           throw e2;
         }
         var text = (data.content || []).map(function (c) { return c.type === 'text' ? c.text : ''; }).join('');
@@ -1737,14 +1742,19 @@
     });
   }
 
+  // 一時的な失敗は2回まで作り直す。途中で切れた場合は短く書かせる。
   function aiGradeWithRetry(item, key, model, onProgress) {
-    return aiGradeOne(item, key, model).catch(function (err) {
-      if (!err.retryable) throw err;
-      onProgress('retry');
-      return sleep(err.status === 429 ? 4000 : 1500).then(function () {
-        return aiGradeOne(item, key, model);
+    function attempt(n, brief) {
+      return aiGradeOne(item, key, model, brief).catch(function (err) {
+        if (!err.retryable || n >= 2) throw err;
+        onProgress('retry');
+        var wait = err.status === 429 ? 4000 + n * 3000 : 1200 + n * 1200;
+        return sleep(wait).then(function () {
+          return attempt(n + 1, brief || !!err.needBrief);
+        });
       });
-    });
+    }
+    return attempt(0, false);
   }
 
   // 1問ずつ独立して採点し、失敗した問題だけ簡易採点に落とす
@@ -1761,6 +1771,8 @@
       }).catch(function (err) {
         item.ai = null;
         item.aiError = (err && err.message) ? err.message : String(err);
+        if (err && err.status) item.aiError += '（HTTP ' + err.status + '）';
+        console.warn('AI採点に失敗:', item.qid, item.aiError, err);
         failed.push(item.aiError);
       }).then(function () {
         i++;
@@ -2453,7 +2465,7 @@
         'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true'
       },
       body: JSON.stringify({
-        model: getModel(), max_tokens: 4000, system: GEN_SYSTEM,
+        model: getModel(), max_tokens: 8000, system: GEN_SYSTEM,
         messages: [{ role: 'user', content: buildPersonalPrompt(unit) }]
       })
     }).then(function (res) {
@@ -4145,12 +4157,13 @@
         'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true'
       },
       body: JSON.stringify({
-        model: getModel(), max_tokens: 3500, system: DRILL_SYSTEM,
+        model: getModel(), max_tokens: 8000, system: DRILL_SYSTEM,
         messages: [{ role: 'user', content: buildDrillPrompt(list) }]
       })
     }).then(function (res) {
       return res.json().then(function (data) {
         if (!res.ok) throw new Error((data && data.error && data.error.message) || ('HTTP ' + res.status));
+        if (data.stop_reason === 'max_tokens') throw new Error('復習カードの生成が途中で切れました。');
         var text = (data.content || []).map(function (c) { return c.type === 'text' ? c.text : ''; }).join('');
         var j = parseAiJson(text);
         var cards = Array.isArray(j.cards) ? j.cards : [];
