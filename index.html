@@ -227,6 +227,7 @@
     <div class="mt-3 h-2 rounded-full bg-slate-100 overflow-hidden">
       <div id="progress-bar" class="h-full bg-indigo-500 transition-all" style="width:0%"></div>
     </div>
+    <p id="stage-note" class="hidden mt-3 text-sm text-slate-600"></p>
     <p id="timer-note" class="hidden mt-3 text-sm font-bold text-rose-600">時間の目安を過ぎました。途中まででも提出して添削を受けましょう。</p>
   </div>
 
@@ -277,6 +278,22 @@
   </div>
 
   <div id="review-list" class="space-y-6"></div>
+
+  <div id="next-step" class="hidden bg-gradient-to-r from-emerald-50 to-sky-50 border-2 border-emerald-200 rounded-2xl p-6 text-center space-y-3">
+    <h3 class="font-extrabold text-slate-900 text-lg">この場面で自由英作文に進みましょう</h3>
+    <p class="text-sm text-slate-600">いま添削を受けた表現を使って、同じ場面の文章を組み立てます。</p>
+    <button type="button" data-action="go-stage2" class="px-7 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-base font-bold shadow-lg transition inline-flex items-center gap-2">
+      <i class="ph-bold ph-pen-nib" aria-hidden="true"></i> 自由英作文に進む
+    </button>
+  </div>
+
+  <div id="rewrite-box" class="hidden bg-gradient-to-r from-amber-50 to-orange-50 border-2 border-amber-200 rounded-2xl p-6 text-center space-y-3">
+    <h3 class="font-extrabold text-slate-900 text-lg">同じ課題をもう一度書く</h3>
+    <p class="text-sm text-slate-600">指摘を読んだ直後に書き直すと、指摘した表現が定着しやすくなります。<br>書き直しの点数は初回とは分けて記録されます。</p>
+    <button type="button" data-action="rewrite" class="px-7 py-3 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-base font-bold shadow-lg transition inline-flex items-center gap-2">
+      <i class="ph-bold ph-arrow-counter-clockwise" aria-hidden="true"></i> もう一度書く
+    </button>
+  </div>
 
   <div class="bg-gradient-to-r from-indigo-50 to-violet-50 border-2 border-indigo-200 rounded-2xl p-6 text-center space-y-3">
     <h3 class="font-extrabold text-slate-900 text-lg">まだ学べます</h3>
@@ -1208,19 +1225,22 @@
     if (!tp.length) tp = trPool();
 
     var roundUsed = {};
-    var f = pickByUnit(fp, rot, used, roundUsed);
-    used[f.id] = 1; roundUsed[f.id] = 1;
+
+    // 同じ単元でそろえる。和文英訳2問が自由英作文の足場になるため。
     var t1 = pickByUnit(tp, rot, used, roundUsed);
     used[t1.id] = 1; roundUsed[t1.id] = 1;
-    // 2問目は別単元を優先する
-    var rot2 = rot.filter(function (u) { return u !== t1.cat; }).concat([t1.cat]);
-    var t2 = pickByUnit(tp, rot2, used, roundUsed);
+    var unitFirst = [t1.cat].concat(rot);
+    var t2 = pickByUnit(tp, unitFirst, used, roundUsed);
+    used[t2.id] = 1; roundUsed[t2.id] = 1;
+    var f = pickByUnit(fp, unitFirst, used, roundUsed);
+    used[f.id] = 1; roundUsed[f.id] = 1;
 
     var seen = usedIds();
+    // stage 1 = 和文英訳（先に解いて採点する）, stage 2 = 自由英作文
     return [
-      { qid: f.id,  type: 'free',      answer: '', score: null, round: round, again: !!seen[f.id] },
-      { qid: t1.id, type: 'translate', answer: '', score: null, round: round, again: !!seen[t1.id] },
-      { qid: t2.id, type: 'translate', answer: '', score: null, round: round, again: !!seen[t2.id] }
+      { qid: t1.id, type: 'translate', answer: '', score: null, round: round, stage: 1, again: !!seen[t1.id] },
+      { qid: t2.id, type: 'translate', answer: '', score: null, round: round, stage: 1, again: !!seen[t2.id] },
+      { qid: f.id,  type: 'free',      answer: '', score: null, round: round, stage: 2, again: !!seen[f.id] }
     ];
   }
 
@@ -2203,7 +2223,7 @@
     var graded = {};
     Object.keys(state.sessions).forEach(function (d) {
       state.sessions[d].items.forEach(function (it) {
-        if (typeof it.score !== 'number') return;
+        if (typeof it.score !== 'number' || it.rw) return;
         (graded[it.qid] = graded[it.qid] || []).push(it.score);
       });
     });
@@ -2499,11 +2519,14 @@
   }
 
   /* ============ 進捗・フェーズ ============ */
-  function allGraded() {
+  // 書き直しは「初見でどれだけ書けたか」ではないので、進捗の集計からは外す
+  function allGraded(includeRewrite) {
     var out = [];
     Object.keys(state.sessions).sort().forEach(function (k) {
       state.sessions[k].items.forEach(function (it) {
-        if (typeof it.score === 'number') out.push({ date: k, item: it });
+        if (typeof it.score !== 'number') return;
+        if (!includeRewrite && it.rw) return;
+        out.push({ date: k, item: it });
       });
     });
     return out;
@@ -2869,7 +2892,7 @@
     var out = [];
     Object.keys(state.sessions).sort().forEach(function (date) {
       state.sessions[date].items.forEach(function (it) {
-        if (typeof it.score === 'number') out.push({ date: date, score: it.score, ai: !!it.ai });
+        if (typeof it.score === 'number') out.push({ date: date, score: it.score, ai: !!it.ai, rw: !!it.rw });
       });
     });
     return out;
@@ -2881,8 +2904,9 @@
     var buckets = {}, order = [];
     tl.forEach(function (r) {
       var k = mode === 'week' ? weekStartKey(r.date) : mode === 'month' ? r.date.slice(0, 7) : r.date;
-      if (!buckets[k]) { buckets[k] = { key: k, scores: [], simple: 0 }; order.push(k); }
-      buckets[k].scores.push(r.score);
+      if (!buckets[k]) { buckets[k] = { key: k, scores: [], rw: [], simple: 0 }; order.push(k); }
+      if (r.rw) buckets[k].rw.push(r.score);
+      else buckets[k].scores.push(r.score);
       if (!r.ai) buckets[k].simple++;
     });
     order.sort();
@@ -2890,6 +2914,7 @@
     var runSum = 0, runN = 0;
     return order.map(function (k) {
       var b = buckets[k];
+      if (!b.scores.length) b.scores = b.rw.slice();       // 書き直しだけの日も表示する
       var sum = b.scores.reduce(function (a, c) { return a + c; }, 0);
       runSum += sum; runN += b.scores.length;
       var label;
@@ -2900,6 +2925,7 @@
         key: k, label: label,
         avg: Math.round(sum / b.scores.length),
         n: b.scores.length,
+        rw: b.rw.length ? Math.round(b.rw.reduce(function (a, c) { return a + c; }, 0) / b.rw.length) : null,
         simple: b.simple,
         cum: Math.round(runSum / runN)
       };
@@ -2926,6 +2952,12 @@
                  '<text x="' + (W - padR) + '" y="' + (y(goal) - 6) + '" text-anchor="end" font-size="11" font-weight="700" fill="#059669">合格ライン ' + goal + '</text>';
     }
 
+    var rwPts = series.map(function (d, i) { return d.rw === null ? null : (x(i) + ',' + y(d.rw)); }).filter(Boolean);
+    var lineRw = rwPts.length > 1 ? '<polyline points="' + rwPts.join(' ') + '" fill="none" stroke="#d97706" stroke-width="2" stroke-dasharray="6 3"/>' : '';
+    var dotsRw = series.map(function (d, i) {
+      return d.rw === null ? '' : '<circle cx="' + x(i) + '" cy="' + y(d.rw) + '" r="3.5" fill="#d97706"/>';
+    }).join('');
+
     var ptsAvg = series.map(function (d, i) { return x(i) + ',' + y(d.avg); }).join(' ');
     var ptsCum = series.map(function (d, i) { return x(i) + ',' + y(d.cum); }).join(' ');
 
@@ -2946,7 +2978,7 @@
     });
 
     return '<svg viewBox="0 0 ' + W + ' ' + H + '" width="' + W + '" height="' + H + '" role="img" aria-label="スコアの推移">' +
-      grid + goalLine + lineCum + lineAvg + dots + labels + '</svg>';
+      grid + goalLine + lineCum + lineRw + dotsRw + lineAvg + dots + labels + '</svg>';
   }
 
   function renderChart() {
@@ -2970,7 +3002,9 @@
       '<span class="inline-flex items-center gap-1.5"><span class="w-4 h-1 rounded bg-indigo-600"></span>' +
         (chartMode === 'day' ? 'その日の平均' : chartMode === 'week' ? 'その週の平均' : 'その月の平均') + '</span>' +
       '<span class="inline-flex items-center gap-1.5"><span class="w-4 h-0.5 rounded bg-slate-400"></span>全期間の平均（累積）</span>' +
-      '<span class="inline-flex items-center gap-1.5"><span class="w-4 h-0.5 rounded bg-emerald-500"></span>Phase ' + state.phase + ' の合格ライン</span>';
+      '<span class="inline-flex items-center gap-1.5"><span class="w-4 h-0.5 rounded bg-emerald-500"></span>Phase ' + state.phase + ' の合格ライン</span>' +
+      (series.some(function (d) { return d.rw !== null; })
+        ? '<span class="inline-flex items-center gap-1.5"><span class="w-4 h-0.5 rounded bg-amber-600"></span>書き直し後</span>' : '');
 
     var last = series[series.length - 1];
     var prev = series.length > 1 ? series[series.length - 2] : null;
@@ -3057,12 +3091,20 @@
   }
 
   // 未採点の問題（＝いま解くべきセット）だけを返す。採点済みは学習履歴へ回す。
+  // 未採点の問題を、段階ごとに返す。
+  // 和文英訳（stage 1）を解き終えるまで、自由英作文（stage 2）は出さない。
   function pendingItems(sess) {
-    var out = [];
+    var all = [];
     sess.items.forEach(function (it, i) {
-      if (typeof it.score !== 'number') out.push({ item: it, gi: i });
+      if (typeof it.score !== 'number') all.push({ item: it, gi: i });
     });
-    return out;
+    var s1 = all.filter(function (p) { return (p.item.stage || 1) === 1; });
+    return s1.length ? s1 : all;
+  }
+
+  function currentStage(sess) {
+    var p = pendingItems(sess);
+    return p.length ? (p[0].item.stage || 1) : 0;
   }
 
   function latestRound(sess) {
@@ -3077,9 +3119,9 @@
     if (!personalizedOn()) return Promise.resolve(buildRound(dateKey, round));
     return generatePersonalSet().then(function (out) {
       return [
-        { qid: out.free[0].id,      type: 'free',      answer: '', score: null, round: round, made: 1 },
-        { qid: out.translate[0].id, type: 'translate', answer: '', score: null, round: round, made: 1 },
-        { qid: out.translate[1].id, type: 'translate', answer: '', score: null, round: round, made: 1 }
+        { qid: out.translate[0].id, type: 'translate', answer: '', score: null, round: round, stage: 1, made: 1 },
+        { qid: out.translate[1].id, type: 'translate', answer: '', score: null, round: round, stage: 1, made: 1 },
+        { qid: out.free[0].id,      type: 'free',      answer: '', score: null, round: round, stage: 2, made: 1 }
       ];
     }).catch(function (err) {
       console.warn('個別生成に失敗したため収録問題を使います', err);
@@ -3154,7 +3196,8 @@
         '<span class="text-xs font-extrabold px-2 py-1 rounded border ' + (item.type === 'free' ? 'bg-indigo-50 text-indigo-700 border-indigo-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200') + '">' +
         (item.type === 'free' ? '自由英作文' : '和文英訳') + '</span>' + lenChip(q.len) +
         '<span class="text-[11px] font-bold px-2 py-0.5 rounded bg-violet-50 text-violet-700 border border-violet-200">' + esc(unitName(q.cat)) + '</span>' +
-        (item.again ? '<span class="text-[11px] font-bold px-2 py-0.5 rounded bg-amber-100 text-amber-700">再出題</span>' : '') +
+        (item.rw ? '<span class="text-[11px] font-bold px-2 py-0.5 rounded bg-amber-100 text-amber-700">書き直し（初回 ' + item.prev + '点）</span>' : '') +
+        (item.again && !item.rw ? '<span class="text-[11px] font-bold px-2 py-0.5 rounded bg-amber-100 text-amber-700">再出題</span>' : '') +
         (item.round > 1 ? '<span class="text-[11px] text-slate-400 font-bold">第' + item.round + 'セット</span>' : '') + '</div>';
 
       var body;
@@ -3195,7 +3238,20 @@
     }
 
     $('#total-count').textContent = pend.length;
-    $('#task-day-badge').textContent = sess.rounds > 1 ? ('第' + sess.rounds + 'セット') : '本日のタスク';
+    var stg = currentStage(sess);
+    var rw = pend.length && pend[0].item.rw;
+    $('#task-day-badge').textContent = rw ? '書き直し'
+      : stg === 2 ? '仕上げ: 自由英作文'
+      : (sess.rounds > 1 ? '第' + sess.rounds + 'セット' : '本日のタスク');
+    var note = $('#stage-note');
+    if (note) {
+      note.innerHTML = rw
+        ? '同じ課題をもう一度書きます。添削で指摘された点を意識してください。'
+        : stg === 2
+          ? 'さきほどの和文英訳と<strong class="text-slate-700">同じ場面</strong>です。出てきた表現を使って、自分で組み立ててみてください。'
+          : 'まず短い和文英訳から。採点のあと、同じ場面の自由英作文に進みます。';
+      note.classList.remove('hidden');
+    }
     updateProgress();
   }
 
@@ -3395,6 +3451,7 @@
       '<span class="text-xs font-extrabold px-2 py-1 rounded border ' + (item.type === 'free' ? 'bg-indigo-50 text-indigo-700 border-indigo-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200') + '">' +
       (item.type === 'free' ? '自由英作文' : '和文英訳') + '</span>' + lenChip(q.len) +
       '<span class="text-[11px] font-bold px-2 py-0.5 rounded bg-violet-50 text-violet-700 border border-violet-200">' + esc(unitName(q.cat)) + '</span>' +
+      (item.rw ? '<span class="text-[11px] font-bold px-2 py-0.5 rounded bg-amber-100 text-amber-700">書き直し（初回 ' + item.prev + '点）</span>' : '') +
       (item.ai ? '<span class="text-[11px] font-bold px-2 py-0.5 rounded bg-indigo-50 text-indigo-600 border border-indigo-200">AI添削</span>'
                : '<span class="text-[11px] font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-500 border border-slate-200">簡易採点</span>') + '</div>' +
       '<div class="text-2xl font-extrabold ' + scoreColor(item.score) + '">' + item.score + '<span class="text-sm text-slate-400 font-medium"> / 100</span></div></div>';
@@ -3428,6 +3485,36 @@
       '</div>';
   }
 
+
+  // 添削を受けた課題を、もう一度書き直す
+  function startRewrite() {
+    var sess = ensureSession(TODAY);
+    var round = latestRound(sess);
+    var done = sess.items.filter(function (it) {
+      return typeof it.score === 'number' && (it.round || 1) === round && !it.rw;
+    });
+    if (!done.length) return;
+
+    var copies = done.map(function (it) {
+      return {
+        qid: it.qid, type: it.type, answer: '', score: null,
+        round: round, stage: it.stage || 1, rw: true, prev: it.score
+      };
+    });
+    sess.items = sess.items.concat(copies);
+    save();
+    renderQuestions();
+    startTimer(copies.length * 180);
+    switchView('writing');
+  }
+
+  function goStage2() {
+    renderQuestions();
+    var sess = state.sessions[TODAY];
+    startTimer(pendingItems(sess).length * 180);
+    switchView('writing');
+  }
+
   function renderReview() {
     var sess = state.sessions[TODAY];
     if (!sess) return;
@@ -3439,6 +3526,13 @@
       ? Math.round(shown.reduce(function (a, b) { return a + b.score; }, 0) / shown.length) : '–';
     $('#review-title').textContent = jpDate(TODAY) + (round > 1 ? ' 第' + round + 'セットの結果' : ' の結果');
     $('#today-rounds').textContent = sess.rounds;
+
+    // 和文英訳を終えた直後なら、自由英作文への導線を出す
+    var pend = pendingItems(sess);
+    var nx = $('#next-step');
+    if (nx) nx.classList.toggle('hidden', !(pend.length && (pend[0].item.stage || 1) === 2));
+    var rwb = $('#rewrite-box');
+    if (rwb) rwb.classList.toggle('hidden', !!pend.length || !shown.length);
 
     var aiN = shown.filter(function (it) { return !!it.ai; }).length;
     var errs = shown.filter(function (it) { return !it.ai && it.aiError; }).map(function (it) { return it.aiError; });
@@ -4778,6 +4872,8 @@
       case 'more':         moreQuestions(); break;
       case 'load-sample':  loadSample(); break;
       case 'reroll':       rerollRound(); break;
+      case 'rewrite':      startRewrite(); break;
+      case 'go-stage2':    goStage2(); break;
       case 'tag':          setTag(el.getAttribute('data-id'), el.getAttribute('data-type'), el.getAttribute('data-phrase'), el.getAttribute('data-meaning')); break;
       case 'filter':       state.filter = el.getAttribute('data-cat'); renderBank(); break;
       case 'chart':        chartMode = el.getAttribute('data-mode'); renderChart(); break;
